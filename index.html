@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>V-FACTOR: Hyper-Strike</title>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html { width: 100%; height: 100%; overflow: hidden; background: radial-gradient(circle at center, #0a0d16 0%, #030407 100%); font-family: monospace; }
+        ::-webkit-scrollbar { display: none; }
+        * { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Tactical Background Grid Overlay */
+        .grid-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 1; background-image: linear-gradient(rgba(34, 224, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 224, 255, 0.03) 1px, transparent 1px); background-size: 40px 40px; }
+
+        #splash { position: fixed; inset: 0; background: #05060b; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; transition: opacity 0.5s; }
+        #splash h1 { color: #22e0ff; font-size: clamp(2rem, 6vw, 4rem); text-shadow: 0 0 20px #22e0ff; margin-bottom: 10px; }
+        #splash p { color: #ff2d95; letter-spacing: 5px; }
+
+        #statusContainer { position: absolute; top: 20px; right: 20px; display: none; background: rgba(11, 14, 22, 0.8); border: 1px solid #ffb020; padding: 8px 12px; border-radius: 4px; z-index: 90; font-weight: bold; color: #fff; box-shadow: 0 0 10px rgba(255, 176, 32, 0.2); }
+        #status { color: #ffb020; }
+
+        .top-action-btn { position: absolute; top: 20px; z-index: 85; background: rgba(11, 14, 22, 0.8); border: 1px solid #22e0ff; color: #22e0ff; padding: 8px 15px; border-radius: 4px; font-family: monospace; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: background 0.2s; box-shadow: 0 0 10px rgba(34, 224, 255, 0.2); }
+        #btnGlobalSound { left: 20px; }
+        #btnOpenGuide { left: 170px; border-color: #ffb020; color: #ffb020; box-shadow: 0 0 10px rgba(255, 176, 32, 0.2); }
+        .top-action-btn:hover { background: rgba(34, 224, 255, 0.1); }
+
+        #guideModal { display: none; position: fixed; inset: 0; background: rgba(5,6,11,0.95); z-index: 200; flex-direction: column; align-items: center; padding: 40px 20px; overflow-y: auto; color: #fff; }
+        .guide-content { max-width: 600px; width: 100%; background: #0b0e16; border: 1px solid #22e0ff; padding: 30px; border-radius: 8px; box-shadow: 0 0 20px rgba(34,224,255,0.1); margin: auto; }
+        .guide-content h2 { color: #22e0ff; margin-bottom: 20px; text-transform: uppercase; text-align: center; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .guide-content h3 { color: #ff2d95; margin: 20px 0 10px 0; }
+        .guide-content ul { list-style-type: none; margin-bottom: 20px; }
+        .guide-content li { margin-bottom: 10px; line-height: 1.5; color: #ccc; }
+        .guide-content strong { color: #8dff5a; }
+        #btnCloseGuide { margin-top: 20px; width: 100%; padding: 15px; background: #22e0ff; color: #000; border: none; font-weight: bold; font-size: 16px; border-radius: 4px; cursor: pointer; text-transform: uppercase; }
+
+        /* CENTERED WRAPPERS */
+        .flex-center-wrapper { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; z-index: 80; overflow-y: auto; }
+        .hub-content { max-width: 450px; width: 100%; margin: auto; z-index: 10; position: relative; }
+
+        /* Login Box */
+        .login-box { background: rgba(11, 14, 22, 0.85); border: 1px solid #22e0ff; padding: 30px; border-radius: 8px; max-width: 350px; width: 100%; text-align: center; box-shadow: 0 0 25px rgba(34,224,255,0.15); margin: auto; z-index: 10; backdrop-filter: blur(5px); }
+        .login-box h2 { color: #22e0ff; margin-bottom: 10px; font-size: 22px; text-transform: uppercase; letter-spacing: 2px; }
+        .login-box p.sec-note { color: #8dff5a; font-size: 11px; margin-bottom: 20px; line-height: 1.4; opacity: 0.8; }
+        .login-box input { width: 100%; padding: 12px; margin-bottom: 15px; background: #05060b; color: #fff; border: 1px solid #22e0ff; border-radius: 4px; outline: none; font-family: monospace; }
+        .login-box button { width: 100%; padding: 12px; margin-bottom: 10px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; text-transform: uppercase; font-family: monospace; font-size: 14px; transition: 0.2s; }
+        .btn-login { background: #22e0ff; color: #000; }
+        .btn-login:hover { background: #1bc2dd; box-shadow: 0 0 10px #22e0ff; }
+        .btn-guest { background: transparent; color: #ff2d95; border: 1px solid #ff2d95 !important; margin-bottom: 0; }
+        .btn-guest:hover { background: rgba(255, 45, 149, 0.1); box-shadow: 0 0 10px rgba(255, 45, 149, 0.4); }
+
+        /* Main Hub Elements */
+        .box { padding: 20px; margin-bottom: 15px; border: 1px solid #22e0ff; border-radius: 6px; background: rgba(11, 14, 22, 0.85); backdrop-filter: blur(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .box h3 { font-size: 16px; text-transform: uppercase; margin-bottom: 12px; }
+        .box input { padding: 12px; background: #05060b; color: #fff; border: 1px solid #22e0ff; width: 100%; margin-bottom: 10px; border-radius: 4px; outline: none; font-family: monospace; }
+        .box button { padding: 12px 16px; background: #22e0ff; color: #000; border: none; cursor: pointer; font-weight: bold; width: 100%; border-radius: 4px; text-transform: uppercase; font-family: monospace; transition: 0.2s; }
+        .join-btn { background: #ff2d95 !important; color: #fff !important; }
+        .join-btn:hover { background: #e01f7c !important; box-shadow: 0 0 10px #ff2d95; }
+
+        .mode-container, .mode-container-multi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .mode-container-multi { display: none; }
+        .mode-btn { padding: 14px; background: rgba(11, 14, 22, 0.85); color: #fff; border: 1px solid #555; cursor: pointer; font-weight: bold; border-radius: 4px; transition: 0.2s; font-family: monospace; font-size: 14px; backdrop-filter: blur(5px); }
+        .mode-btn.active { background: #22e0ff; color: #000; border: 1px solid #22e0ff; box-shadow: 0 0 15px rgba(34,224,255,0.4); }
+        .mode-btn:hover:not(.active):not(.disabled) { border-color: #8dff5a; color: #8dff5a; }
+        .mode-btn.disabled { opacity: 0.3; cursor: not-allowed; border-color: #333; color: #555; }
+
+        .lobby-settings-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; }
+        .lobby-settings-row label { color: #ffb020; font-weight: bold; font-size: 14px; }
+        .lobby-settings-row input { width: 80px !important; margin: 0 !important; text-align: center; border-color: #ffb020 !important; background: #05060b; color: #fff; font-weight: bold; font-size: 16px; }
+
+        .id-row { display: flex; align-items: center; background: #05060b; padding: 10px 15px; border: 1px solid #333; border-radius: 4px; margin-bottom: 5px; }
+        .id-row span { color: #fff; font-size: 14px; }
+        .id-row strong { color: #8dff5a; margin-left: 5px; letter-spacing: 1px; }
+        .copy-btn { margin-left: auto; width: auto !important; padding: 8px 16px !important; background: #8dff5a !important; color: #000 !important; font-size: 12px; margin-bottom: 0 !important; }
+        .copy-btn:hover { box-shadow: 0 0 10px #8dff5a; }
+
+        /* MATCH LOBBY */
+        .match-box { border: 2px solid #ff2d95; padding: 30px; border-radius: 8px; text-align: center; max-width: 400px; width: 100%; box-shadow: 0 0 30px rgba(255,45,149,0.2); z-index: 2; background: rgba(11, 14, 22, 0.9); margin: auto; backdrop-filter: blur(10px); }
+        .match-box h2 { color: #ff2d95; margin-bottom: 25px; font-size: 28px; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .player-slot { display: block; width: 100%; font-size: 18px; font-family: monospace; font-weight: bold; margin-bottom: 12px; padding: 15px; background: rgba(5, 6, 11, 0.8); border: 1px solid #333; border-radius: 4px; text-align: center; color: #ccc; cursor: default; }
+        #slot1 { border-color: #22e0ff; color: #22e0ff; box-shadow: inset 0 0 10px rgba(34, 224, 255, 0.1); }
+        #slot2 { border-color: #ff2d95; color: #ff2d95; box-shadow: inset 0 0 10px rgba(255, 45, 149, 0.1); }
+        
+        .btn-start { background: #8dff5a; color: #000; padding: 15px; width: 100%; font-size: 18px; font-weight: bold; border: none; cursor: pointer; margin-top: 20px; border-radius: 4px; display: none; transition: 0.3s; font-family: monospace; text-transform: uppercase; }
+        .btn-start:hover { box-shadow: 0 0 15px #8dff5a; transform: scale(1.02); }
+        .btn-ready { background: #22e0ff; color: #000; padding: 15px; width: 100%; font-size: 18px; font-weight: bold; border: none; cursor: pointer; margin-top: 20px; border-radius: 4px; display: none; font-family: monospace; text-transform: uppercase; transition: 0.3s; }
+        .btn-ready:hover { box-shadow: 0 0 15px #22e0ff; transform: scale(1.02); }
+        
+        .btn-transfer { background: transparent; color: #ffb020; border: 1px solid #ffb020; padding: 12px; width: 100%; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 15px; border-radius: 4px; transition: 0.3s; display: none; font-family: monospace; text-transform: uppercase; }
+        .btn-transfer:hover { background: rgba(255, 176, 32, 0.1); box-shadow: inset 0 0 10px rgba(255, 176, 32, 0.2); }
+        
+        .btn-leave { background: transparent; color: #ff3b3b; border: 1px solid #ff3b3b; padding: 12px; width: 100%; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; border-radius: 4px; transition: 0.3s; text-transform: uppercase; display: block; font-family: monospace; }
+        .btn-leave:hover { background: rgba(255, 59, 59, 0.1); box-shadow: inset 0 0 10px rgba(255, 59, 59, 0.2); }
+        
+        #waitingText { display: none; color: #22e0ff; background: rgba(34,224,255,0.05); border: 1px solid #22e0ff; padding: 15px 30px; border-radius: 6px; margin-top: 25px; font-size: 16px; font-weight: bold; text-transform: uppercase; text-shadow: 0 0 10px #22e0ff; box-shadow: 0 0 15px rgba(34,224,255,0.1); text-align: center; animation: waitPulse 2s infinite; z-index: 10; backdrop-filter: blur(5px); }
+        @keyframes waitPulse { 50% { opacity: 0.5; } }
+
+        #countdownOverlay { display: none; position: absolute; inset: 0; background: rgba(5,6,11,0.95); z-index: 60; flex-direction: column; justify-content: center; align-items: center; color: #8dff5a; font-size: 10rem; font-weight: bold; text-shadow: 0 0 40px #8dff5a; }
+
+        #skeletonUI { display: none; position: absolute; inset: 0; padding: 30px; z-index: 95; background: #05060b; }
+        .skeleton { background: linear-gradient(90deg, #0b0e16 25%, #161c2e 50%, #0b0e16 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; margin-bottom: 15px; }
+        .skel-hud { height: 30px; width: 40%; display: inline-block; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* Game Arena */
+        #gameUI { display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+        .score-hud { position: absolute; top: 25px; width: 100%; padding: 0 6vw; display: flex; justify-content: space-between; font-size: clamp(18px, 5vw, 28px); font-weight: bold; text-shadow: 0 0 15px currentColor; }
+        .combo-text { font-size: 0.6em; color: #ffb020; text-shadow: 0 0 5px #ffb020; margin-left: 5px; }
+        
+        #timerDisplay { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); font-size: clamp(28px, 8vw, 42px); font-weight: bold; color: #fff; text-shadow: 0 0 20px #fff; background: rgba(5,6,11,0.5); padding: 5px 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); }
+        .timer-hurry { color: #ff3b3b !important; text-shadow: 0 0 20px #ff3b3b !important; animation: pulse 1s infinite; border-color: rgba(255,59,59,0.3) !important; }
+        @keyframes pulse { 50% { opacity: 0.5; transform: translateX(-50%) scale(1.1); } }
+
+        #weaponToggle { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); pointer-events: auto; background: rgba(11, 14, 22, 0.9); border: 2px solid #22e0ff; color: #22e0ff; padding: 12px 25px; font-family: monospace; font-size: 18px; font-weight: bold; border-radius: 8px; cursor: pointer; text-shadow: 0 0 10px currentColor; box-shadow: 0 0 15px rgba(34,224,255,0.2); display: none; transition: 0.2s; text-transform: uppercase; }
+        #weaponToggle:active { transform: translateX(-50%) scale(0.95); }
+        
+        #jamOverlay { display: none; position: absolute; inset: 0; background: rgba(255, 45, 149, 0.15); z-index: 20; justify-content: center; align-items: center; color: #ff2d95; font-size: clamp(2.5rem, 10vw, 5rem); font-weight: bold; text-shadow: 0 0 30px #ff2d95; letter-spacing: 8px; text-align: center; pointer-events: none; backdrop-filter: blur(2px); }
+        
+        #gameOverOverlay { display: none; position: absolute; inset: 0; background: rgba(5, 6, 11, 0.95); z-index: 30; flex-direction: column; justify-content: center; align-items: center; pointer-events: auto; backdrop-filter: blur(5px); }
+        #goTitle { font-size: clamp(3.5rem, 12vw, 7rem); font-weight: bold; text-transform: uppercase; letter-spacing: 8px; margin-bottom: 10px; }
+        #goSubtitle { color: #fff; font-size: 24px; margin-bottom: 15px; font-family: monospace; }
+        #goAccuracy { color: #22e0ff; font-size: 18px; margin-bottom: 50px; font-family: monospace; }
+        #returnBtn { padding: 18px 35px; background: #22e0ff; color: #000; border: none; font-size: 20px; font-weight: bold; cursor: pointer; border-radius: 6px; text-transform: uppercase; font-family: monospace; box-shadow: 0 0 20px rgba(34,224,255,0.4); transition: 0.2s; }
+        #returnBtn:hover { transform: scale(1.05); background: #8dff5a; box-shadow: 0 0 20px rgba(141,255,90,0.4); }
+
+        #gameCanvas { display: none; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; }
+    </style>
+</head>
+<body>
+    <!-- TACTICAL GRID -->
+    <div class="grid-overlay"></div>
+
+    <div id="splash">
+        <h1>V-FACTOR STUDIOS</h1>
+        <p>BUILT BY VINAY</p>
+    </div>
+
+    <!-- UI Overlays (Visible in Hub & Match Lobby) -->
+    <div id="statusContainer">Status: <span id="status">Offline</span></div>
+    <button id="btnGlobalSound" class="top-action-btn" style="display: none;">🔊 SOUND: ON</button>
+    <button id="btnOpenGuide" class="top-action-btn" style="display: none;">📖 GUIDE</button>
+
+    <!-- GUIDE MODAL -->
+    <div id="guideModal">
+        <div class="guide-content">
+            <h2>V-FACTOR Guide</h2>
+            <h3>🔫 The Arsenal</h3>
+            <ul>
+                <li><strong>PULSE [SMG]:</strong> Hold to fire. High speed, low damage. Best for combos.</li>
+                <li><strong>RAIL [SNIPER]:</strong> Tap to fire. Massive damage, screen shake, slow reload.</li>
+                <li><strong>AEGIS [SHOTGUN]:</strong> 6-pellet spread. Devastating up close.</li>
+                <li><strong>FLUX [BURST]:</strong> 3-round energy burst. Balanced range and power.</li>
+            </ul>
+            <h3>🛸 Anomalies (Targets)</h3>
+            <ul>
+                <li><span style="color: #8dff5a;">GREEN:</span> Standard target.</li>
+                <li><span style="color: #ffd54a;">GOLD:</span> Moves fast. Grants 3X score multiplier!</li>
+                <li><span style="color: #22e0ff;">CYAN (EMP):</span> Instantly jams opponent's screen for 2 seconds!</li>
+            </ul>
+            <h3>🎮 How to Play with Friends</h3>
+            <ul>
+                <li>1. Host a 1v1 DUEL game.</li>
+                <li>2. Copy your ID and send it to your friend.</li>
+                <li>3. Friend pastes the ID and clicks Connect.</li>
+                <li>4. Friend clicks READY in the Match Room.</li>
+                <li>5. Host sets the Match Time and clicks START!</li>
+            </ul>
+            <button id="btnCloseGuide">UNDERSTOOD</button>
+        </div>
+    </div>
+
+    <!-- 1. LOGIN SCREEN -->
+    <div id="loginUI" class="flex-center-wrapper">
+        <div class="login-box">
+            <h2>Welcome Players</h2>
+            <p class="sec-note">Create an ID to save your progress and secure your username across sessions.</p>
+            <input type="text" id="regUsername" placeholder="Enter Username (e.g. CyberNinja)">
+            <input type="password" id="regPassword" placeholder="Set Password">
+            <button class="btn-login" id="btnLogin">Login / Create ID</button>
+            <p style="margin: 10px 0; color: #555; font-size: 14px;">OR</p>
+            <button class="btn-guest" id="btnGuest">Play as Guest</button>
+        </div>
+    </div>
+
+    <div id="skeletonUI">
+        <div class="skeleton skel-hud"></div>
+        <div class="skeleton skel-hud" style="float: right;"></div>
+    </div>
+
+    <!-- 2. SHOOTING HUB -->
+    <div id="lobby" class="flex-center-wrapper" style="display: none;">
+        <div class="hub-content">
+            <h1 style="margin-bottom: 25px; text-align: center; text-shadow: 0 0 10px #22e0ff;">V-FACTOR: Shooting Hub</h1>
+            <p style="text-align: center; margin-bottom: 25px; color: #8dff5a;">Logged in as: <strong id="hubUsernameDisplay"></strong></p>
+
+            <div class="mode-container" id="primaryModes">
+                <button id="btnPrimarySolo" class="mode-btn active">SOLO MODE</button>
+                <button id="btnPrimaryMulti" class="mode-btn">MULTIPLAYER</button>
+            </div>
+
+            <div class="mode-container-multi" id="subModes">
+                <button id="btnDuel" class="mode-btn active">1v1 DUEL</button>
+                <button id="btnSquad" class="mode-btn">2v2 SQUAD</button>
+            </div>
+
+            <div id="networkControls" style="display: none;">
+                <div class="box">
+                    <h3 style="color: #22e0ff;">Host Game</h3>
+                    <div class="lobby-settings-row">
+                        <label>Match Duration (Secs):</label>
+                        <input type="number" id="matchTimeSetting" value="60" min="60" max="300">
+                    </div>
+                    <div class="id-row">
+                        <span>ID: <strong id="playerId">Generating...</strong></span>
+                        <button class="copy-btn" id="copyIdBtn">COPY</button>
+                    </div>
+                </div>
+                
+                <div class="box" style="border-color: #ff2d95; background: rgba(255,45,149,0.05);">
+                    <h3 style="color: #ff2d95;">Join Game</h3>
+                    <input type="text" id="joinId" placeholder="Paste Host ID here" style="border-color: #ff2d95;">
+                    <button id="connectBtn" class="join-btn">CONNECT TO HOST</button>
+                </div>
+            </div>
+
+            <button id="launchSoloBtn" style="display: block; background: #8dff5a; color: #000; font-size: 18px; padding: 18px; width: 100%; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; text-transform: uppercase; font-family: monospace; box-shadow: 0 0 15px rgba(141,255,90,0.3); transition: 0.2s;">LAUNCH TRAINING ARENA</button>
+        </div>
+    </div>
+
+    <!-- 3. MATCH LOBBY -->
+    <div id="matchLobby" class="flex-center-wrapper" style="display: none;">
+        <div class="hub-content" style="display: flex; flex-direction: column; align-items: center;">
+            <div class="match-box">
+                <h2>MATCH ROOM</h2>
+                <div class="player-slot" id="slot1">Host: <strong id="roomHostName"></strong></div>
+                <div class="player-slot" id="slot2">P2: <strong id="roomPeerName">Waiting...</strong></div>
+                
+                <p id="roomMatchRules" style="color: #ffb020; font-size: 14px; margin-top: 15px; font-weight: bold; letter-spacing: 1px;"></p>
+
+                <button id="btnReady" class="btn-ready">READY</button>
+                <button id="btnStartMatch" class="btn-start">START MATCH</button>
+                <button id="btnTransferHost" class="btn-transfer">Transfer Host to P2</button>
+                <button id="btnLeaveRoom" class="btn-leave">LEAVE ROOM</button>
+            </div>
+            <div id="waitingText">WAITING FOR HOST TO START MATCH...</div>
+        </div>
+    </div>
+
+    <div id="countdownOverlay">3</div>
+
+    <!-- 4. IN-GAME UI -->
+    <div id="gameUI">
+        <div id="timerDisplay">60</div>
+        <div class="score-hud">
+            <div style="color: #22e0ff;"><span id="myNameDisplay">YOU</span>: <span id="myScore">0</span> <span id="myCombo" class="combo-text">x1</span></div>
+            <div id="peerScoreBlock" style="color: #ff2d95;"><span id="peerNameDisplay">P2</span>: <span id="peerScore">0</span> <span id="peerCombo" class="combo-text">x1</span></div>
+        </div>
+        <button id="weaponToggle">PULSE [SMG]</button>
+    </div>
+    
+    <div id="jamOverlay">SYSTEM JAMMED</div>
+
+    <div id="gameOverOverlay">
+        <div id="goTitle">VICTORY</div>
+        <div id="goSubtitle">Final Score: 0</div>
+        <div id="goAccuracy">Accuracy: 100%</div>
+        <button id="returnBtn">RETURN TO LOBBY</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <script src="multiplayer.js"></script>
+</body>
+</html>
