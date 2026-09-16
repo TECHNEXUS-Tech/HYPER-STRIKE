@@ -55,13 +55,12 @@ if(btnGlobalSound) {
 document.getElementById('btnOpenGuide').addEventListener('click', () => document.getElementById('guideModal').style.display = 'flex');
 document.getElementById('btnCloseGuide').addEventListener('click', () => document.getElementById('guideModal').style.display = 'none');
 
-// --- LOGIN & AUTHENTICATION (Fixed for Reloads) ---
+// --- LOGIN & AUTHENTICATION (UPDATED SYSTEM) ---
 let myUsername = "Player"; 
-const usernameInput = document.getElementById('usernameInput');
-const passwordInput = document.getElementById('passwordInput');
+const usernameInput = document.getElementById('regUsername');
+const passwordInput = document.getElementById('regPassword');
 
 function checkLoginStatus() { 
-    // Session Storage allows Guest accounts to survive the Leave Room reload seamlessly
     const savedUser = sessionStorage.getItem('vfactor_username') || localStorage.getItem('vfactor_username'); 
     if (savedUser) { 
         myUsername = savedUser; 
@@ -72,9 +71,33 @@ function checkLoginStatus() {
 }
 
 document.getElementById('btnLogin').addEventListener('click', () => {
-    const user = usernameInput.value.trim(), pass = passwordInput.value, lowerUser = user.toLowerCase();
+    const user = usernameInput.value.trim();
+    const pass = passwordInput.value;
+    const lowerUser = user.toLowerCase();
+    
     if (user === "") { alert("Please enter a username."); return; }
-    if ((lowerUser === 'vinay' || lowerUser === 'admin') && pass !== 'VFACTOR238') { alert("SECURITY ALERT: Invalid Developer Password."); return; }
+    if (pass === "") { alert("Please enter a password to secure your ID."); return; }
+    
+    // Developer Override
+    if ((lowerUser === 'vinay' || lowerUser === 'admin') && pass !== 'VFACTOR238') { 
+        alert("SECURITY ALERT: Invalid Developer Password."); 
+        return; 
+    }
+
+    // New Password Vault Logic
+    const storageKey = 'vfactor_pass_' + lowerUser;
+    const savedPass = localStorage.getItem(storageKey);
+
+    if (savedPass) {
+        if (savedPass !== pass) {
+            alert("Incorrect password for this Username. Please try again.");
+            return;
+        }
+    } else {
+        // Create new ID and tie password to it
+        localStorage.setItem(storageKey, pass);
+    }
+
     myUsername = user; 
     localStorage.setItem('vfactor_username', user); 
     sessionStorage.setItem('vfactor_username', user);
@@ -92,7 +115,6 @@ function enterHub() {
     document.getElementById('lobby').style.display = 'flex';
     document.getElementById('hubUsernameDisplay').innerText = myUsername;
     
-    // Top Nav is visible in Hub and Lobby only
     document.getElementById('btnGlobalSound').style.display = 'block';
     document.getElementById('btnOpenGuide').style.display = 'block';
     
@@ -100,32 +122,28 @@ function enterHub() {
 }
 
 // --- HUB & UI ROUTING ---
-let gameMode = 'SOLO'; let hostMatchTime = 60;
-const btnPrimarySolo = document.getElementById('btnPrimarySolo'); const btnPrimaryMulti = document.getElementById('btnPrimaryMulti');
-const subModes = document.getElementById('subModes'); const networkControls = document.getElementById('networkControls');
-const launchSoloBtn = document.getElementById('launchSoloBtn'); const statusContainer = document.getElementById('statusContainer');
+let gameMode = 'SOLO'; 
+let hostMatchTime = 60;
+const btnPrimarySolo = document.getElementById('btnPrimarySolo'); 
+const btnPrimaryMulti = document.getElementById('btnPrimaryMulti');
+const subModes = document.getElementById('subModes'); 
+const networkControls = document.getElementById('networkControls');
+const launchSoloBtn = document.getElementById('launchSoloBtn'); 
+const statusContainer = document.getElementById('statusContainer');
 
 btnPrimarySolo.addEventListener('click', () => {
     gameMode = 'SOLO'; btnPrimarySolo.classList.add('active'); btnPrimaryMulti.classList.remove('active');
     subModes.style.display = 'none'; networkControls.style.display = 'none'; statusContainer.style.display = 'none'; launchSoloBtn.style.display = 'block';
-    Object.values(multiModeBtns).forEach(btn => btn.classList.remove('active'));
 });
 
 btnPrimaryMulti.addEventListener('click', () => {
     gameMode = 'DUEL'; btnPrimaryMulti.classList.add('active'); btnPrimarySolo.classList.remove('active');
     subModes.style.display = 'grid'; launchSoloBtn.style.display = 'none'; networkControls.style.display = 'block'; statusContainer.style.display = 'block';
-    Object.values(multiModeBtns).forEach(btn => btn.classList.remove('active'));
-    document.getElementById('btnDuel').classList.add('active');
 });
 
-const multiModeBtns = { 'DUEL': document.getElementById('btnDuel'), 'SQUAD': document.getElementById('btnSquad') };
 document.getElementById('btnSquad').addEventListener('click', () => {
     alert("2v2 SQUAD Mode is COMING SOON! Master your skills in 1v1 DUEL first.");
 });
-document.getElementById('btnDuel').addEventListener('click', () => {
-    gameMode = 'DUEL'; Object.values(multiModeBtns).forEach(btn => btn.classList.remove('active')); document.getElementById('btnDuel').classList.add('active');
-    networkControls.style.display = 'block'; statusContainer.style.display = 'block';
-}); 
 
 document.getElementById('matchTimeSetting').addEventListener('change', (e) => {
     let val = parseInt(e.target.value) || 60; val = Math.max(60, Math.min(300, val)); e.target.value = val; hostMatchTime = val;
@@ -142,7 +160,7 @@ document.getElementById('launchSoloBtn').addEventListener('click', () => {
     isHost = true; hostMatchTime = 60; document.getElementById('peerScoreBlock').style.display = 'none'; runCountdown(hostMatchTime);
 });
 
-// --- CORE PHYSICS VARIABLES (STRICT 1v1 ENGINE) ---
+// --- CORE PHYSICS VARIABLES ---
 const WEAPONS = [ { id: 'PULSE', name: 'PULSE [SMG]', auto: true, rof: 0.1, spread: 0.05, pellets: 1, damage: 10, color: '#22e0ff' }, { id: 'RAIL', name: 'RAIL [SNIPER]', auto: false, rof: 1.2, spread: 0.0, pellets: 1, damage: 100, color: '#ff2d95' }, { id: 'AEGIS', name: 'AEGIS [SHOTGUN]', auto: false, rof: 0.8, spread: 0.15, pellets: 6, damage: 20, color: '#ffb020' }, { id: 'FLUX', name: 'FLUX [BURST]', auto: true, rof: 0.4, spread: 0.04, pellets: 3, damage: 30, color: '#8dff5a' } ];
 let currentWeaponIdx = 0; let isTriggerDown = false; let lastShotTime = 0; let isJammed = false;
 let targets = [], flashes = [], hitMarkers = []; let screenShake = 0, lastTime = performance.now();
@@ -155,7 +173,7 @@ let myShotsFired = 0, myShotsHit = 0; let peerShotsFired = 0, peerShotsHit = 0;
 
 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
 
-// --- PURE 1v1 NETWORK CORE ---
+// --- NETWORK CORE ---
 const peer = new Peer();
 let connection = null; 
 let isHost = false;
@@ -186,12 +204,8 @@ document.getElementById('connectBtn').addEventListener('click', () => {
 
 function triggerSkeletonLoader() { document.getElementById('lobby').style.display = 'none'; document.getElementById('skeletonUI').style.display = 'block'; }
 
-// LEAVE ROOM LOGIC - BULLETPROOF MEMORY CLEAR
 document.getElementById('btnLeaveRoom').addEventListener('click', () => {
-    if (connection && connection.open) {
-        connection.send({ type: 'peer_left' });
-    }
-    // Location reload is absolutely bulletproof for cleaning memory leaks.
+    if (connection && connection.open) { connection.send({ type: 'peer_left' }); }
     setTimeout(() => location.reload(), 150); 
 });
 
@@ -238,7 +252,6 @@ document.getElementById('btnStartMatch').addEventListener('click', () => {
     runCountdown(hostMatchTime);
 });
 
-// RESTORED TRANSFER HOST BUTTON
 document.getElementById('btnTransferHost').addEventListener('click', () => {
     if (connection && connection.open) {
         connection.send({ type: 'transfer_host' });
@@ -272,10 +285,7 @@ function setupChannel() {
         else if (data.type === 'update_time') { hostMatchTime = data.time; updateMatchLobbyUI(); } 
         else if (data.type === 'transfer_host') { isHost = true; isPeerReady = false; updateMatchLobbyUI(); } 
         else if (data.type === 'start_countdown') { runCountdown(data.time); } 
-        else if (data.type === 'peer_left') {
-            alert("The other player left the room.");
-            location.reload();
-        }
+        else if (data.type === 'peer_left') { alert("The other player left the room."); location.reload(); }
         else if (data.type === 'reset_lobby') {
             document.getElementById('gameOverOverlay').style.display = 'none'; document.getElementById('gameCanvas').style.display = 'none'; document.getElementById('gameUI').style.display = 'none';
             targets = []; flashes = []; hitMarkers = []; isMatchOver = false; isGameRunning = false;
@@ -284,7 +294,7 @@ function setupChannel() {
             document.getElementById('btnGlobalSound').style.display = 'block'; document.getElementById('btnOpenGuide').style.display = 'block';
             enterMatchLobby();
         }
-        // PURE 1V1 GAMEPLAY SYNC
+        // GAMEPLAY SYNC
         else if (data.type === 'aim') { peerAim.x = data.x; peerAim.y = data.y; } 
         else if (data.type === 'spawn') { targets.push(data.target); } 
         else if (data.type === 'shoot_anim') {
@@ -320,7 +330,7 @@ let clockInterval, spawnInterval;
 
 function runCountdown(duration) {
     document.getElementById('lobby').style.display = 'none'; document.getElementById('matchLobby').style.display = 'none';
-    document.getElementById('btnGlobalSound').style.display = 'none'; // Hide Top Nav
+    document.getElementById('btnGlobalSound').style.display = 'none'; 
     document.getElementById('btnOpenGuide').style.display = 'none';
     
     const cdOverlay = document.getElementById('countdownOverlay'); cdOverlay.style.display = 'flex';
@@ -338,7 +348,7 @@ function startGameplay(duration) {
     
     document.getElementById('gameUI').style.display = 'block'; 
     canvas.style.display = 'block'; 
-    document.getElementById('weaponToggle').style.display = 'block'; // ENSURE VISIBILITY
+    document.getElementById('weaponToggle').style.display = 'block'; 
     
     document.getElementById('myNameDisplay').innerText = myUsername; 
     document.getElementById('peerNameDisplay').innerText = gameMode==='SOLO' ? "TRAINING" : peerUsername;
@@ -381,25 +391,34 @@ function endMatch() {
 
 document.getElementById('returnBtn').addEventListener('click', () => {
     if (gameMode === 'SOLO') { 
-        location.reload(); // Guaranteed clean return for Solo
+        location.reload(); 
     } else { 
         if(connection && connection.open) connection.send({ type: 'reset_lobby' }); 
         
-        // Manual DOM reset to avoid race conditions
-        document.getElementById('gameOverOverlay').style.display = 'none'; document.getElementById('gameCanvas').style.display = 'none'; document.getElementById('gameUI').style.display = 'none';
+        document.getElementById('gameOverOverlay').style.display = 'none'; 
+        document.getElementById('gameCanvas').style.display = 'none'; 
+        document.getElementById('gameUI').style.display = 'none';
         targets = []; flashes = []; hitMarkers = []; isMatchOver = false; isGameRunning = false;
         myScore = 0; peerScore = 0; myCombo = 1; peerCombo = 1; myShotsFired = 0; myShotsHit = 0; peerShotsFired = 0; peerShotsHit = 0;
         document.getElementById('myScore').innerText = '0'; document.getElementById('peerScore').innerText = '0'; document.getElementById('myCombo').innerText = 'x1'; document.getElementById('peerCombo').innerText = 'x1';
         isPeerReady = false; 
-        document.getElementById('btnGlobalSound').style.display = 'block'; document.getElementById('btnOpenGuide').style.display = 'block';
+        document.getElementById('btnGlobalSound').style.display = 'block'; 
+        document.getElementById('btnOpenGuide').style.display = 'block';
         enterMatchLobby();
     } 
 });
 
-
-// --- ARSENAL & TARGET SPAWNS ---
 const weaponToggleBtn = document.getElementById('weaponToggle');
-if(weaponToggleBtn) { weaponToggleBtn.addEventListener('click', (e) => { e.stopPropagation(); currentWeaponIdx = (currentWeaponIdx + 1) % WEAPONS.length; const w = WEAPONS[currentWeaponIdx]; weaponToggleBtn.innerText = w.name; weaponToggleBtn.style.color = w.color; weaponToggleBtn.style.borderColor = w.color; }); }
+if(weaponToggleBtn) { 
+    weaponToggleBtn.addEventListener('click', (e) => { 
+        e.stopPropagation(); 
+        currentWeaponIdx = (currentWeaponIdx + 1) % WEAPONS.length; 
+        const w = WEAPONS[currentWeaponIdx]; 
+        weaponToggleBtn.innerText = w.name; 
+        weaponToggleBtn.style.color = w.color; 
+        weaponToggleBtn.style.borderColor = w.color; 
+    }); 
+}
 
 function spawnTarget() {
     if (targets.filter(t => t.active).length >= 6) return;
@@ -407,18 +426,43 @@ function spawnTarget() {
     if (typeRoll > 0.9) { anomalyType = 'gold'; targetColor = '255, 213, 74'; speed *= 1.6; } else if (typeRoll > 0.8) { anomalyType = 'emp'; targetColor = '34, 224, 255'; }
     const angle = Math.random() * Math.PI * 2;
     const t = { id: Date.now() + Math.random(), x: 0.2 + Math.random() * 0.6, y: 0.2 + Math.random() * 0.6, r: 0.04, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life: 8, active: true, anomaly: anomalyType, rgb: targetColor };
-    targets.push(t); if (gameMode !== 'SOLO' && connection && connection.open) connection.send({ type: 'spawn', target: t });
+    targets.push(t); 
+    if (gameMode !== 'SOLO' && connection && connection.open) connection.send({ type: 'spawn', target: t });
 }
 
 function triggerJam() {
-    isJammed = true; screenShake = 20; audio.jam(); const overlay = document.getElementById('jamOverlay'); overlay.style.display = 'flex'; isTriggerDown = false; setTimeout(() => { isJammed = false; overlay.style.display = 'none'; }, 2000); 
+    isJammed = true; screenShake = 20; audio.jam(); 
+    const overlay = document.getElementById('jamOverlay'); 
+    overlay.style.display = 'flex'; 
+    isTriggerDown = false; 
+    setTimeout(() => { isJammed = false; overlay.style.display = 'none'; }, 2000); 
 }
 
-function setAim(e) { const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; myAim.x = Math.max(0, Math.min(1, clientX / window.innerWidth)); myAim.y = Math.max(0, Math.min(1, clientY / window.innerHeight)); }
-canvas.addEventListener('pointerdown', (e) => { audio.init(); setAim(e); isTriggerDown = true; });
-canvas.addEventListener('pointermove', (e) => { setAim(e); if (gameMode !== 'SOLO' && connection && connection.open) connection.send({ type: 'aim', x: myAim.x, y: myAim.y }); });
-canvas.addEventListener('pointerup', () => { isTriggerDown = false; });
-canvas.addEventListener('touchmove', (e) => { e.preventDefault(); setAim(e); if (gameMode !== 'SOLO' && connection && connection.open) connection.send({ type: 'aim', x: myAim.x, y: myAim.y }); }, { passive: false });
+// --- ULTRA-RESPONSIVE MOBILE TOUCH TARGETING ---
+function setAim(e) { 
+    myAim.x = Math.max(0, Math.min(1, e.clientX / window.innerWidth)); 
+    myAim.y = Math.max(0, Math.min(1, e.clientY / window.innerHeight)); 
+}
+canvas.addEventListener('pointerdown', (e) => { 
+    canvas.setPointerCapture(e.pointerId); 
+    audio.init(); 
+    setAim(e); 
+    isTriggerDown = true; 
+    
+    // Instantaneous tap-fire response
+    if (!isJammed && !isMatchOver) attemptFire(performance.now() / 1000);
+});
+canvas.addEventListener('pointermove', (e) => { 
+    setAim(e); 
+    if (gameMode !== 'SOLO' && connection && connection.open) connection.send({ type: 'aim', x: myAim.x, y: myAim.y }); 
+});
+canvas.addEventListener('pointerup', (e) => { 
+    canvas.releasePointerCapture(e.pointerId); 
+    isTriggerDown = false; 
+});
+canvas.addEventListener('pointercancel', (e) => { 
+    isTriggerDown = false; 
+});
 
 function attemptFire(nowInSeconds) {
     if (isJammed || isMatchOver) return; 
