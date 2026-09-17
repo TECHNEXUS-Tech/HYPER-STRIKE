@@ -55,7 +55,7 @@ if(btnGlobalSound) {
 document.getElementById('btnOpenGuide').addEventListener('click', () => document.getElementById('guideModal').style.display = 'flex');
 document.getElementById('btnCloseGuide').addEventListener('click', () => document.getElementById('guideModal').style.display = 'none');
 
-// --- LOGIN & AUTHENTICATION (UPDATED SYSTEM) ---
+// --- PERFECTED LOGIN & AUTHENTICATION ---
 let myUsername = "Player"; 
 const usernameInput = document.getElementById('regUsername');
 const passwordInput = document.getElementById('regPassword');
@@ -72,11 +72,12 @@ function checkLoginStatus() {
 
 document.getElementById('btnLogin').addEventListener('click', () => {
     const user = usernameInput.value.trim();
-    const pass = passwordInput.value;
-    const lowerUser = user.toLowerCase();
+    const pass = passwordInput.value; 
     
     if (user === "") { alert("Please enter a username."); return; }
     if (pass === "") { alert("Please enter a password to secure your ID."); return; }
+
+    const lowerUser = user.toLowerCase();
     
     // Developer Override
     if ((lowerUser === 'vinay' || lowerUser === 'admin') && pass !== 'VFACTOR238') { 
@@ -84,17 +85,17 @@ document.getElementById('btnLogin').addEventListener('click', () => {
         return; 
     }
 
-    // New Password Vault Logic
+    // Password Vault Logic
     const storageKey = 'vfactor_pass_' + lowerUser;
     const savedPass = localStorage.getItem(storageKey);
 
     if (savedPass) {
         if (savedPass !== pass) {
-            alert("Incorrect password for this Username. Please try again.");
+            alert("Incorrect password for this Username. Try again.");
             return;
         }
     } else {
-        // Create new ID and tie password to it
+        // Create new ID
         localStorage.setItem(storageKey, pass);
     }
 
@@ -160,7 +161,7 @@ document.getElementById('launchSoloBtn').addEventListener('click', () => {
     isHost = true; hostMatchTime = 60; document.getElementById('peerScoreBlock').style.display = 'none'; runCountdown(hostMatchTime);
 });
 
-// --- CORE PHYSICS VARIABLES ---
+// --- CORE PHYSICS VARIABLES (STRICT 1v1 ENGINE) ---
 const WEAPONS = [ { id: 'PULSE', name: 'PULSE [SMG]', auto: true, rof: 0.1, spread: 0.05, pellets: 1, damage: 10, color: '#22e0ff' }, { id: 'RAIL', name: 'RAIL [SNIPER]', auto: false, rof: 1.2, spread: 0.0, pellets: 1, damage: 100, color: '#ff2d95' }, { id: 'AEGIS', name: 'AEGIS [SHOTGUN]', auto: false, rof: 0.8, spread: 0.15, pellets: 6, damage: 20, color: '#ffb020' }, { id: 'FLUX', name: 'FLUX [BURST]', auto: true, rof: 0.4, spread: 0.04, pellets: 3, damage: 30, color: '#8dff5a' } ];
 let currentWeaponIdx = 0; let isTriggerDown = false; let lastShotTime = 0; let isJammed = false;
 let targets = [], flashes = [], hitMarkers = []; let screenShake = 0, lastTime = performance.now();
@@ -173,7 +174,7 @@ let myShotsFired = 0, myShotsHit = 0; let peerShotsFired = 0, peerShotsHit = 0;
 
 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
 
-// --- NETWORK CORE ---
+// --- PURE 1v1 NETWORK CORE ---
 const peer = new Peer();
 let connection = null; 
 let isHost = false;
@@ -205,7 +206,9 @@ document.getElementById('connectBtn').addEventListener('click', () => {
 function triggerSkeletonLoader() { document.getElementById('lobby').style.display = 'none'; document.getElementById('skeletonUI').style.display = 'block'; }
 
 document.getElementById('btnLeaveRoom').addEventListener('click', () => {
-    if (connection && connection.open) { connection.send({ type: 'peer_left' }); }
+    if (connection && connection.open) {
+        connection.send({ type: 'peer_left' });
+    }
     setTimeout(() => location.reload(), 150); 
 });
 
@@ -268,7 +271,6 @@ function setupChannel() {
     });
 
     connection.on('data', (data) => {
-        // LOBBY SYNC
         if (data.type === 'auth_request' && isHost) {
             if (data.requestedName.toLowerCase() === myUsername.toLowerCase()) {
                 connection.send({ type: 'auth_reject', suggestedName: data.requestedName + (Math.random() > 0.5 ? "_Neon" : "_Flux") });
@@ -285,7 +287,10 @@ function setupChannel() {
         else if (data.type === 'update_time') { hostMatchTime = data.time; updateMatchLobbyUI(); } 
         else if (data.type === 'transfer_host') { isHost = true; isPeerReady = false; updateMatchLobbyUI(); } 
         else if (data.type === 'start_countdown') { runCountdown(data.time); } 
-        else if (data.type === 'peer_left') { alert("The other player left the room."); location.reload(); }
+        else if (data.type === 'peer_left') {
+            alert("The other player left the room.");
+            location.reload();
+        }
         else if (data.type === 'reset_lobby') {
             document.getElementById('gameOverOverlay').style.display = 'none'; document.getElementById('gameCanvas').style.display = 'none'; document.getElementById('gameUI').style.display = 'none';
             targets = []; flashes = []; hitMarkers = []; isMatchOver = false; isGameRunning = false;
@@ -438,29 +443,41 @@ function triggerJam() {
     setTimeout(() => { isJammed = false; overlay.style.display = 'none'; }, 2000); 
 }
 
-// --- ULTRA-RESPONSIVE MOBILE TOUCH TARGETING ---
+// --- ULTRA-RESPONSIVE MOBILE TOUCH & NETWORK THROTTLE ---
+let lastAimSendTime = 0; // The Network Throttle limit
+
 function setAim(e) { 
+    // Pure e.clientX is supported beautifully on native pointer events (no touch mapping required)
     myAim.x = Math.max(0, Math.min(1, e.clientX / window.innerWidth)); 
     myAim.y = Math.max(0, Math.min(1, e.clientY / window.innerHeight)); 
 }
+
 canvas.addEventListener('pointerdown', (e) => { 
-    canvas.setPointerCapture(e.pointerId); 
+    canvas.setPointerCapture(e.pointerId); // Locks finger tracking exclusively to Canvas
     audio.init(); 
     setAim(e); 
     isTriggerDown = true; 
     
-    // Instantaneous tap-fire response
+    // Tap-Fire Instant Response bypasses the visual loop
     if (!isJammed && !isMatchOver) attemptFire(performance.now() / 1000);
 });
+
 canvas.addEventListener('pointermove', (e) => { 
     setAim(e); 
-    if (gameMode !== 'SOLO' && connection && connection.open) connection.send({ type: 'aim', x: myAim.x, y: myAim.y }); 
+    const now = performance.now();
+    // Throttle network aiming packet to 30ms (prevents overloading PeerJS & mobile lag)
+    if (gameMode !== 'SOLO' && connection && connection.open && (now - lastAimSendTime > 30)) {
+        lastAimSendTime = now;
+        connection.send({ type: 'aim', x: myAim.x, y: myAim.y }); 
+    }
 });
+
 canvas.addEventListener('pointerup', (e) => { 
     canvas.releasePointerCapture(e.pointerId); 
     isTriggerDown = false; 
 });
-canvas.addEventListener('pointercancel', (e) => { 
+
+canvas.addEventListener('pointercancel', () => { 
     isTriggerDown = false; 
 });
 
@@ -513,7 +530,9 @@ function executeHit(targetData, shooterIdentity, baseDamage) {
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; } window.addEventListener('resize', resize);
 function drawCrosshair(normX, normY, color) {
     const px = normX * canvas.width, py = normY * canvas.height; ctx.strokeStyle = color; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(px - 14, py); ctx.lineTo(px + 14, py); ctx.stroke(); ctx.beginPath(); ctx.moveTo(px, py - 14); ctx.lineTo(px, py + 14); ctx.stroke(); ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px - 14, py); ctx.lineTo(px + 14, py); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py - 14); ctx.lineTo(px, py + 14); ctx.stroke();
+    ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2); ctx.stroke();
 }
 
 function renderLoop(now) {
