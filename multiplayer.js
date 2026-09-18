@@ -100,7 +100,6 @@ const passwordInput = document.getElementById('regPassword');
 function checkLoginStatus() { 
     let savedUser = sessionStorage.getItem('vfactor_username') || localStorage.getItem('vfactor_username'); 
     
-    // Purge legacy Guest accounts to force users to create a permanent ID
     if (savedUser && savedUser.startsWith("Guest_")) {
         localStorage.removeItem('vfactor_username');
         sessionStorage.removeItem('vfactor_username');
@@ -185,7 +184,7 @@ let myAccHistory = [0]; let peerAccHistory = [0]; let peripheralFlashOpacity = 0
 
 let aimPointerId = null; let shootPointerId = null;
 let touchAnchor = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, startTime: 0 };
-let autoFireHoverTime = 0; let lastAimSendTime = 0; // RE-ADDED GLOBALLY TO PREVENT CRASH
+let autoFireHoverTime = 0; let lastAimSendTime = 0;
 
 const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
 
@@ -207,8 +206,8 @@ const peer = new Peer(myPeerId, {
     }
 });
 
-let connection = null;         // Reliable Game State Channel
-let connUnreliable = null;     // Unreliable Aim Coordinate Channel
+let connection = null;         
+let connUnreliable = null;     
 let isHost = false; let isPeerReady = false; let peerUsername = "Waiting...";
 let connectionTimeout = null; let heartbeatInterval = null;
 
