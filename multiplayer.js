@@ -1,5 +1,43 @@
 // multiplayer.js - V-FACTOR STUDIOS
 
+// --- ALL GLOBAL VARIABLES MOVED TO TOP TO PREVENT EXECUTION CRASHES ---
+let myUsername = "Player"; 
+let gameMode = 'SOLO'; let hostMatchTime = 60;
+
+const WEAPONS = [ 
+    { id: '[ PULSE ]', name: '[ PULSE ]', auto: true, rof: 0.1, spread: 0.05, pellets: 1, damage: 10, color: '#22e0ff' }, 
+    { id: '[ RAIL ]', name: '[ RAIL ]', auto: false, rof: 1.2, spread: 0.0, pellets: 1, damage: 100, color: '#ff2d95' }, 
+    { id: '[ AEGIS ]', name: '[ AEGIS ]', auto: false, rof: 0.8, spread: 0.15, pellets: 6, damage: 20, color: '#ffb020' }, 
+    { id: '[ FLUX ]', name: '[ FLUX ]', auto: true, rof: 0.4, spread: 0.04, pellets: 3, damage: 30, color: '#8dff5a' } 
+];
+let currentWeaponIdx = 0, isTriggerDown = false, lastShotTime = 0, isJammed = false;
+let targets = [], flashes = [], hitMarkers = [], screenShake = 0, lastTime = performance.now();
+const myAim = { x: 0.5, y: 0.5 }, peerAim = { x: 0.5, y: 0.5 }; 
+
+let isGameRunning = false, currentMatchTime = 60, isMatchOver = false, clockInterval, spawnInterval;
+let myScore = 0, peerScore = 0, myCombo = 1, peerCombo = 1, myLastHitTime = 0, peerLastHitTime = 0;
+let myShotsFired = 0, myShotsHit = 0, peerShotsFired = 0, peerShotsHit = 0, myMaxCombo = 1, peerMaxCombo = 1; 
+
+let shards = [], fct = [], shockwaves = [], railTrails = [], timeScale = 1.0;
+let myAccHistory = [0], peerAccHistory = [0], peripheralFlashOpacity = 0;
+
+let aimPointerId = null, shootPointerId = null;
+let touchAnchor = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, startTime: 0 };
+let autoFireHoverTime = 0, lastAimSendTime = 0;
+
+let connection = null, connUnreliable = null;     
+let isHost = false, isPeerReady = false, peerUsername = "Waiting...";
+let connectionTimeout = null, heartbeatInterval = null, readyHoldTimer = null;
+
+let gyroBase = { beta: null, gamma: null };
+let globalParticleThrottle = 1.0, dtHistory = [];
+let bgZ = 1.0, streams = [], rgbHue = 0, notifyTimeout = null;
+let isTouchDevice = false;
+
+const canvas = document.getElementById('gameCanvas'); 
+const ctx = canvas.getContext('2d');
+
+// --- EVENT LISTENERS ---
 window.addEventListener('load', () => {
     setTimeout(() => {
         const splash = document.getElementById('splash');
@@ -8,10 +46,9 @@ window.addEventListener('load', () => {
     }, 2000);
 });
 
-let isTouchDevice = false;
 window.addEventListener('touchstart', () => { isTouchDevice = true; }, { passive: true });
 
-// --- ADVANCED AUDIO ENGINE (FEMALE AI VOICE) ---
+// --- AUDIO & HAPTICS ENGINE ---
 const audio = (() => {
     let ac = null, master = null, muted = false, analyser = null, dataArray = null;
     let femaleVoice = null;
@@ -92,8 +129,7 @@ if(btnGlobalSound) {
 document.getElementById('btnOpenGuide').addEventListener('click', () => document.getElementById('guideModal').style.display = 'flex');
 document.getElementById('btnCloseGuide').addEventListener('click', () => document.getElementById('guideModal').style.display = 'none');
 
-// --- LOGIN & AUTHENTICATION (WITH LEGACY GUEST PURGE) ---
-let myUsername = "Player"; 
+// --- LOGIN & ROUTING ---
 const usernameInput = document.getElementById('regUsername');
 const passwordInput = document.getElementById('regPassword');
 
@@ -135,8 +171,6 @@ function enterHub() {
     if (gameMode === 'DUEL') document.getElementById('statusContainer').style.display = 'block'; 
 }
 
-// --- HUB & UI ROUTING ---
-let gameMode = 'SOLO'; let hostMatchTime = 60;
 document.getElementById('btnPrimarySolo').addEventListener('click', (e) => {
     gameMode = 'SOLO'; e.target.classList.add('active'); document.getElementById('btnPrimaryMulti').classList.remove('active');
     document.getElementById('subModes').style.display = 'none'; document.getElementById('networkControls').style.display = 'none'; document.getElementById('statusContainer').style.display = 'none'; document.getElementById('launchSoloBtn').style.display = 'block';
@@ -169,67 +203,50 @@ document.getElementById('launchSoloBtn').addEventListener('click', () => {
     isHost = true; hostMatchTime = 60; runCountdown(hostMatchTime);
 });
 
-// --- CORE PHYSICS VARIABLES & STATE LOCKS ---
-const WEAPONS = [ { id: '[ PULSE ]', name: '[ PULSE ]', auto: true, rof: 0.1, spread: 0.05, pellets: 1, damage: 10, color: '#22e0ff' }, { id: '[ RAIL ]', name: '[ RAIL ]', auto: false, rof: 1.2, spread: 0.0, pellets: 1, damage: 100, color: '#ff2d95' }, { id: '[ AEGIS ]', name: '[ AEGIS ]', auto: false, rof: 0.8, spread: 0.15, pellets: 6, damage: 20, color: '#ffb020' }, { id: '[ FLUX ]', name: '[ FLUX ]', auto: true, rof: 0.4, spread: 0.04, pellets: 3, damage: 30, color: '#8dff5a' } ];
-let currentWeaponIdx = 0; let isTriggerDown = false; let lastShotTime = 0; let isJammed = false;
-let targets = [], flashes = [], hitMarkers = []; let screenShake = 0, lastTime = performance.now();
-const myAim = { x: 0.5, y: 0.5 }; const peerAim = { x: 0.5, y: 0.5 }; 
-
-let isGameRunning = false; let currentMatchTime = 60; let isMatchOver = false; let clockInterval, spawnInterval;
-let myScore = 0, peerScore = 0; let myCombo = 1, peerCombo = 1; let myLastHitTime = 0, peerLastHitTime = 0;
-let myShotsFired = 0, myShotsHit = 0; let peerShotsFired = 0, peerShotsHit = 0; let myMaxCombo = 1, peerMaxCombo = 1; 
-
-let shards = []; let fct = []; let shockwaves = []; let railTrails = []; let timeScale = 1.0;
-let myAccHistory = [0]; let peerAccHistory = [0]; let peripheralFlashOpacity = 0;
-
-let aimPointerId = null; let shootPointerId = null;
-let touchAnchor = { active: false, startX: 0, startY: 0, lastX: 0, lastY: 0, startTime: 0 };
-let autoFireHoverTime = 0; let lastAimSendTime = 0;
-
-const canvas = document.getElementById('gameCanvas'); const ctx = canvas.getContext('2d');
-
-// --- PURE 1v1 NETWORK CORE (WITH ADVANCED ICE SERVERS) ---
+// --- PURE 1v1 NETWORK CORE (HTTPS SECURED) ---
 function generateLobbyID() {
     return 'VFACT-' + Math.random().toString(36).substr(2, 4).toUpperCase();
 }
-const myPeerId = generateLobbyID();
 
-const peer = new Peer(myPeerId, {
-    config: {
-        'iceServers': [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: "turn:openrelay.metered.ca:80", username: "openrelayproject", credential: "openrelayproject" },
-            { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
-            { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
-        ]
-    }
-});
+let peer = null;
+try {
+    peer = new Peer(generateLobbyID(), {
+        config: {
+            'iceServers': [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                // SECURED: Only encrypted port 443 allows GitHub Pages to connect without throwing a fatal DOMException
+                { urls: "turn:openrelay.metered.ca:443", username: "openrelayproject", credential: "openrelayproject" },
+                { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
+            ]
+        }
+    });
+} catch (error) {
+    console.error("PeerJS Initialization blocked by browser. Multiplayer features unavailable.", error);
+}
 
-let connection = null;         
-let connUnreliable = null;     
-let isHost = false; let isPeerReady = false; let peerUsername = "Waiting...";
-let connectionTimeout = null; let heartbeatInterval = null;
+if (peer) {
+    peer.on('open', (id) => { 
+        if(document.getElementById('playerId')) document.getElementById('playerId').innerText = id; 
+        document.getElementById('status').innerText = 'Online'; document.getElementById('status').style.color = '#8dff5a';
+    });
 
-peer.on('open', (id) => { 
-    if(document.getElementById('playerId')) document.getElementById('playerId').innerText = id; 
-    document.getElementById('status').innerText = 'Online'; document.getElementById('status').style.color = '#8dff5a';
-});
-
-peer.on('connection', (conn) => {
-    if (gameMode === 'SOLO') { conn.close(); return; }
-    isHost = true; 
-    if (conn.label === 'unreliable') {
-        connUnreliable = conn;
-    } else {
-        connection = conn; 
-        document.getElementById('status').innerText = 'Connected';
-        triggerSkeletonLoader();
-    }
-    setupChannel(conn);
-});
+    peer.on('connection', (conn) => {
+        if (gameMode === 'SOLO') { conn.close(); return; }
+        isHost = true; 
+        if (conn.label === 'unreliable') {
+            connUnreliable = conn;
+        } else {
+            connection = conn; 
+            document.getElementById('status').innerText = 'Connected';
+            triggerSkeletonLoader();
+        }
+        setupChannel(conn);
+    });
+}
 
 document.getElementById('connectBtn').addEventListener('click', () => {
+    if (!peer) { alert("Multiplayer is blocked by your browser's security settings. Please play Solo Mode."); return; }
     const targetId = document.getElementById('joinId').value.trim();
     if (targetId) {
         document.getElementById('status').innerText = 'Authenticating...'; 
@@ -322,7 +339,6 @@ function updateMatchLobbyUI() {
     }
 }
 
-let readyHoldTimer;
 const btnReady = document.getElementById('btnReady');
 btnReady.addEventListener('pointerdown', (e) => {
     if (isHost) return;
@@ -414,7 +430,6 @@ function setupChannel(conn) {
     });
 }
 
-let gyroBase = { beta: null, gamma: null };
 window.addEventListener('deviceorientation', (e) => {
     if (!isTouchDevice || !isGameRunning || isJammed || isMatchOver || !e.beta || !e.gamma) return;
     if (gyroBase.beta === null) { gyroBase.beta = e.beta; gyroBase.gamma = e.gamma; return; }
@@ -548,7 +563,6 @@ if(weaponToggleBtn) {
     }); 
 }
 
-let notifyTimeout;
 function showNotification(text, colorHex) {
     const el = document.getElementById('inGameNotification');
     el.innerText = text; el.style.color = colorHex; el.style.opacity = 1;
@@ -723,8 +737,6 @@ function drawCrosshair(normX, normY, color, wIdx = 0) {
     if(cd < 1) { ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.arc(px, py, 20, -Math.PI/2, -Math.PI/2 + (Math.PI*2*cd)); ctx.stroke(); }
 }
 
-let globalParticleThrottle = 1.0; let dtHistory = [];
-
 function renderLoop(now) {
     if (!isGameRunning && timeScale === 1.0) return; 
     let dt = ((now - lastTime) / 1000) * timeScale; if (dt > 0.05) dt = 0.05; lastTime = now; const nowInSeconds = now / 1000;
@@ -796,10 +808,7 @@ function renderLoop(now) {
     ctx.restore(); targets = targets.filter(t => t.active); requestAnimationFrame(renderLoop);
 }
 
-// --- 3D HYPERSPACE BACKGROUND ENGINE ---
 const bgCanvas = document.getElementById('bgCanvas'); const bgCtx = bgCanvas.getContext('2d');
-let bgZ = 1.0; let streams = []; let rgbHue = 0;
-
 function resizeBg() { bgCanvas.width = window.innerWidth; bgCanvas.height = window.innerHeight; }
 window.addEventListener('resize', resizeBg);
 resizeBg();
