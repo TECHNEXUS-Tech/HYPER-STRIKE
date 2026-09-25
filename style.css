@@ -48,7 +48,6 @@ body, html { width: 100%; height: 100%; overflow: hidden; background: #030407; f
 #statusContainer { position: absolute; top: 15px; right: 15px; display: none; padding: 8px 12px; z-index: 90; font-weight: 600; font-size: 12px; }
 #status { color: #ffb020; }
 
-/* RE-ENGINEERED GEAR SETTINGS DROPDOWN */
 #settingsContainer { position: absolute; top: 15px; left: 15px; z-index: 95; }
 #btnSettingsMenu { padding: 10px 14px; font-size: 12px; border-color: #22e0ff; color: #22e0ff; cursor: pointer; transition: 0.2s; border-radius: 6px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
 #btnSettingsMenu:hover { background: rgba(34, 224, 255, 0.1); }
@@ -155,10 +154,7 @@ body, html { width: 100%; height: 100%; overflow: hidden; background: #030407; f
 #inGameNotification { position: absolute; top: 75px; left: 50%; transform: translateX(-50%); font-size: clamp(18px, 4vw, 28px); text-shadow: 0 0 20px currentColor; pointer-events: none; opacity: 0; transition: opacity 0.1s; z-index: 20; }
 #timerDisplay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: clamp(24px, 6vw, 36px); font-weight: 800; color: #fff; text-shadow: 0 0 20px #fff; background: rgba(3,4,7,0.3); border: 1px solid rgba(255,255,255,0.1); }
 
-.timer-hurry { color: #ff3b3b !important; text-shadow: 0 0 20px #ff3b3b !important; animation: pulse 1s infinite; border-color: rgba(255,59,59,0.3) !important; }
-.urgency-pulse { animation: redScreenPulse 1s infinite; }
-@keyframes pulse { 50% { opacity: 0.5; transform: translateX(-50%) scale(1.1); } }
-@keyframes redScreenPulse { 0% { box-shadow: inset 0 0 0px transparent; } 50% { box-shadow: inset 0 0 80px rgba(255,59,59,0.6); } 100% { box-shadow: inset 0 0 0px transparent; } }
+.timer-hurry { color: #ff3b3b !important; text-shadow: 0 0 20px #ff3b3b !important; border-color: rgba(255,59,59,0.3) !important; }
 
 #btnAutoFireToggle { position: absolute; bottom: 40px; right: 20px; background: rgba(11, 14, 22, 0.8); border: 1px solid #8dff5a; color: #8dff5a; padding: 10px 15px; font-size: 11px; font-weight: 800; border-radius: 6px; cursor: pointer; pointer-events: auto; }
 #weaponToggle { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); pointer-events: auto; background: rgba(11, 14, 22, 0.95); border: 1px solid #22e0ff; color: #22e0ff; padding: 14px 30px; font-size: 15px; font-weight: 800; border-radius: 8px; cursor: pointer; text-shadow: 0 0 10px currentColor; box-shadow: 0 0 15px rgba(34,224,255,0.2); display: none; transition: transform 0.2s; touch-action: manipulation; letter-spacing: 2px; overflow: hidden; }
@@ -194,12 +190,11 @@ body, html { width: 100%; height: 100%; overflow: hidden; background: #030407; f
 
 #gameCanvas { display: none; position: absolute; inset: 0; width: 100vw; height: 100vh; touch-action: none; cursor: crosshair; z-index: 5; }
 
-/* FIX: Absolute Mobile UI Layout */
 @media (max-width: 768px) {
-    /* Because the gear button is so small, we don't need to force the hub down anymore */
-    .hub-content { max-width: 400px; margin-top: 30px; }
-    
+    #settingsContainer { top: 15px; left: 15px; }
     #statusContainer { top: 15px; right: 15px; padding: 6px 10px; font-size: 10px; transform: none; }
+    /* FIXED: Prevent settings gear from overlapping Title on mobile */
+    .hub-content { max-width: 400px; margin-top: 85px; }
     .network-grid { grid-template-columns: 1fr; gap: 10px; }
     .box { padding: 15px; }
 }
