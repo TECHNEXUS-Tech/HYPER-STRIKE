@@ -66,7 +66,6 @@ function resetToHub() {
     if (connectionTimeout) clearTimeout(connectionTimeout);
     if (heartbeatInterval) clearInterval(heartbeatInterval);
     
-    document.body.classList.remove('urgency-pulse');
     const timerEl = document.getElementById('timerDisplay');
     if (timerEl) timerEl.classList.remove('timer-hurry');
     if (document.getElementById('reconnectOverlay')) document.getElementById('reconnectOverlay').style.display = 'none';
@@ -100,10 +99,27 @@ function resetToHub() {
     
     enterHub();
     
-    if (gameMode !== 'SQUAD') {
-        document.getElementById('btnDuel').classList.add('active'); 
-        document.getElementById('btnSquad').classList.remove('active');
-        gameMode = 'DUEL';
+    // FIXED: Properly restores the exact HTML settings block depending on gameMode when returning from match
+    if (gameMode === 'SOLO') {
+        document.getElementById('btnPrimarySolo').classList.add('active');
+        document.getElementById('btnPrimaryMulti').classList.remove('active');
+        document.getElementById('subModes').style.display = 'none';
+        document.getElementById('networkControls').style.display = 'none';
+        document.getElementById('launchSoloBtn').style.display = 'block';
+    } else {
+        document.getElementById('btnPrimarySolo').classList.remove('active');
+        document.getElementById('btnPrimaryMulti').classList.add('active');
+        document.getElementById('subModes').style.display = 'grid';
+        document.getElementById('launchSoloBtn').style.display = 'none';
+        document.getElementById('networkControls').style.display = 'block';
+
+        if (gameMode === 'SQUAD') {
+            document.getElementById('btnSquad').classList.add('active');
+            document.getElementById('btnDuel').classList.remove('active');
+        } else {
+            document.getElementById('btnDuel').classList.add('active');
+            document.getElementById('btnSquad').classList.remove('active');
+        }
     }
 }
 
@@ -113,7 +129,6 @@ function runCountdown(duration) {
     document.getElementById('settingsContainer').style.display = 'none';
     
     const cdOverlay = document.getElementById('countdownOverlay'); cdOverlay.style.display = 'flex';
-    document.body.classList.remove('urgency-pulse');
     
     myAccHistory = [0]; peerAccHistory = [0]; gyroBase = { beta: null, gamma: null }; peripheralFlashOpacity = 0; document.getElementById('damageFlash').style.display = 'block';
     
@@ -160,7 +175,6 @@ function startGameplay(duration) {
         
         if (currentMatchTime <= 10) { 
             timerEl.classList.add('timer-hurry'); 
-            document.body.classList.add('urgency-pulse');
             if (isSpawner && currentMatchTime === 10) { 
                 clearInterval(spawnInterval); 
                 spawnInterval = setInterval(spawnTarget, (gameMode === 'SQUAD') ? 500 : 750); 
@@ -243,7 +257,6 @@ function endMatch() {
     if (spawnInterval) clearInterval(spawnInterval);
     
     releaseWakeLock();
-    document.body.classList.remove('urgency-pulse');
     if (document.getElementById('btnAutoFireToggle')) document.getElementById('btnAutoFireToggle').style.display = 'none';
     if (document.getElementById('reconnectOverlay')) document.getElementById('reconnectOverlay').style.display = 'none';
     
@@ -381,7 +394,13 @@ canvas.addEventListener('pointermove', (e) => {
             let dx = e.clientX - joystick.originX;
             let dy = e.clientY - joystick.originY;
             let dist = Math.hypot(dx, dy);
-            if (dist > joystick.radius) { dx = (dx / dist) * joystick.radius; dy = (dy / dist) * joystick.radius; }
+            
+            // FIXED: Mathematically traps the inner thumb-circle fully inside the outer ring
+            const maxDist = joystick.radius - 15;
+            if (dist > maxDist) { 
+                dx = (dx / dist) * maxDist; 
+                dy = (dy / dist) * maxDist; 
+            }
             joystick.deltaX = dx; joystick.deltaY = dy;
         }
     }
@@ -553,7 +572,7 @@ function renderLoop(now) {
         }
         
         if (joystick.active && !isJammed && !isMatchOver) {
-            const speedMult = 0.5; // MOBILE SENSITIVITY FIX
+            const speedMult = 0.8; // FIXED: Mobile Sensitivity set to 0.8
             myAim.x = Math.max(0, Math.min(1, myAim.x + (joystick.deltaX / joystick.radius) * speedMult * dt));
             myAim.y = Math.max(0, Math.min(1, myAim.y + (joystick.deltaY / joystick.radius) * speedMult * dt));
         }
@@ -562,6 +581,16 @@ function renderLoop(now) {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
+        // FIXED: 10-Second Urgency Pulse drawn via native Canvas gradient instead of laggy CSS box-shadow
+        if (currentMatchTime <= 10 && !isMatchOver) {
+            const pulseAlpha = (Math.sin(performance.now() / 150) + 1) / 2; 
+            const grad = ctx.createRadialGradient(canvas.width/2, canvas.height/2, canvas.height/4, canvas.width/2, canvas.height/2, canvas.height);
+            grad.addColorStop(0, 'rgba(255,0,0,0)');
+            grad.addColorStop(1, `rgba(255,0,0,${pulseAlpha * 0.4})`);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
         ctx.save();
         if (shakeEnabled) {
             screenShake *= Math.exp(-10 * dt); if (screenShake > 0.5) ctx.translate((Math.random() * 2 - 1) * screenShake, (Math.random() * 2 - 1) * screenShake);
