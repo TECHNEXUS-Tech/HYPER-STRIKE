@@ -198,13 +198,14 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- FIX: Libraries load first, then game logic. All strictly ordered via 'defer'. -->
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js" defer></script>
-    <script src="https://unpkg.com/trystero/dist/trystero-torrent.min.js" defer></script>
-    
+    <!-- UI Physics scripts load first -->
     <script src="js/main.js" defer></script>
     <script src="js/game.js" defer></script>
     <script src="js/network-peer.js" defer></script>
     <script src="js/network-trystero.js" defer></script>
+    
+    <!-- FIX: Switched to the MQTT Network Broker to bypass ISP Torrent Blocking -->
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/trystero@0.20.1/dist/trystero-mqtt.min.js" defer></script>
 </body>
 </html>
