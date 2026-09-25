@@ -223,6 +223,7 @@ function enterHub() {
     if (gameMode === 'DUEL' || gameMode === 'SQUAD') document.getElementById('statusContainer').style.display = 'block'; 
 }
 
+// FIX: Added 'opacity = 1' guarantees to all menu switches so the controls never permanently disappear.
 document.getElementById('btnPrimarySolo').addEventListener('click', (e) => {
     gameMode = 'SOLO'; e.target.classList.add('active'); document.getElementById('btnPrimaryMulti').classList.remove('active');
     document.getElementById('subModes').style.display = 'none'; document.getElementById('networkControls').style.display = 'none'; document.getElementById('statusContainer').style.display = 'none'; document.getElementById('launchSoloBtn').style.display = 'block';
@@ -230,7 +231,10 @@ document.getElementById('btnPrimarySolo').addEventListener('click', (e) => {
 document.getElementById('btnPrimaryMulti').addEventListener('click', (e) => {
     gameMode = 'DUEL'; e.target.classList.add('active'); document.getElementById('btnPrimarySolo').classList.remove('active');
     document.getElementById('subModes').style.display = 'grid'; document.getElementById('launchSoloBtn').style.display = 'none'; 
-    if(peerUsername === "Waiting...") document.getElementById('networkControls').style.display = 'block'; 
+    if(peerUsername === "Waiting...") {
+        document.getElementById('networkControls').style.display = 'block'; 
+        document.getElementById('networkControls').style.opacity = '1';
+    }
     document.getElementById('statusContainer').style.display = 'block';
     document.getElementById('btnDuel').classList.add('active'); 
     
@@ -242,7 +246,10 @@ document.getElementById('btnPrimaryMulti').addEventListener('click', (e) => {
 });
 document.getElementById('btnDuel').addEventListener('click', () => {
     gameMode = 'DUEL'; document.getElementById('btnDuel').classList.add('active'); 
-    if(peerUsername === "Waiting...") document.getElementById('networkControls').style.display = 'block'; 
+    if(peerUsername === "Waiting...") {
+        document.getElementById('networkControls').style.display = 'block'; 
+        document.getElementById('networkControls').style.opacity = '1';
+    }
     document.getElementById('statusContainer').style.display = 'block';
     
     const btnSquad = document.getElementById('btnSquad');
