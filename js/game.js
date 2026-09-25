@@ -168,34 +168,37 @@ function startGameplay(duration) {
         }
         if (currentMatchTime <= 0) { clearInterval(clockInterval); endMatch(); }
     }, 1000);
+    
+    // Explicitly guarantee canvas is reset before rendering begins
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     requestAnimationFrame((now) => { lastTime = now; renderLoop(now); });
 }
 
 function renderLineGraph(canvasId, history, colorHex) {
     const c = document.getElementById(canvasId); if(!c) return;
-    const ctx = c.getContext('2d'); ctx.clearRect(0, 0, c.width, c.height);
+    const ctxGraph = c.getContext('2d'); ctxGraph.clearRect(0, 0, c.width, c.height);
 
     const padX = 40; const padY = 20; const w = c.width - padX - 10; const h = c.height - padY * 2;
     let maxVal = Math.max(...history, 10); maxVal = Math.ceil(maxVal / 10) * 10; 
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 1; ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '12px monospace';
+    ctxGraph.strokeStyle = 'rgba(255,255,255,0.15)'; ctxGraph.lineWidth = 1; ctxGraph.fillStyle = 'rgba(255,255,255,0.6)'; ctxGraph.font = '12px monospace';
     
     for(let i=0; i<=4; i++) {
         const y = padY + (h * (i/4)); const val = Math.round(maxVal - (maxVal * (i/4)));
-        ctx.beginPath(); ctx.moveTo(padX, y); ctx.lineTo(padX + w, y); ctx.stroke(); ctx.fillText(val + "%", 2, y + 4);
+        ctxGraph.beginPath(); ctxGraph.moveTo(padX, y); ctxGraph.lineTo(padX + w, y); ctxGraph.stroke(); ctxGraph.fillText(val + "%", 2, y + 4);
     }
-    ctx.beginPath(); ctx.moveTo(padX, padY); ctx.lineTo(padX, h + padY); ctx.stroke();
+    ctxGraph.beginPath(); ctxGraph.moveTo(padX, padY); ctxGraph.lineTo(padX, h + padY); ctxGraph.stroke();
 
     if(history.length < 2) return;
 
-    ctx.beginPath(); ctx.strokeStyle = colorHex; ctx.lineWidth = 3; ctx.shadowBlur = 10; ctx.shadowColor = colorHex; ctx.lineJoin = 'round';
+    ctxGraph.beginPath(); ctxGraph.strokeStyle = colorHex; ctxGraph.lineWidth = 3; ctxGraph.shadowBlur = 10; ctxGraph.shadowColor = colorHex; ctxGraph.lineJoin = 'round';
     for(let i=0; i<history.length; i++) {
         const x = padX + (i / (history.length - 1)) * w; const y = padY + h - (history[i] / maxVal) * h;
-        if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        if(i===0) ctxGraph.moveTo(x, y); else ctxGraph.lineTo(x, y);
     }
-    ctx.stroke(); ctx.shadowBlur = 0;
-    ctx.lineTo(padX + w, h + padY); ctx.lineTo(padX, h + padY);
-    ctx.globalAlpha = 0.15; ctx.fillStyle = colorHex; ctx.fill(); ctx.globalAlpha = 1.0;
+    ctxGraph.stroke(); ctxGraph.shadowBlur = 0;
+    ctxGraph.lineTo(padX + w, h + padY); ctxGraph.lineTo(padX, h + padY);
+    ctxGraph.globalAlpha = 0.15; ctxGraph.fillStyle = colorHex; ctxGraph.fill(); ctxGraph.globalAlpha = 1.0;
 }
 
 let playAgainBtn = document.getElementById('playAgainBtn');
@@ -317,13 +320,13 @@ function showNotification(text, colorHex) {
     clearTimeout(notifyTimeout); notifyTimeout = setTimeout(() => { el.style.opacity = 0; }, 1500);
 }
 
-function drawOctagon(ctx, x, y, r, rotationOffset = 0) {
-    ctx.beginPath();
+function drawOctagon(canvasCtx, x, y, r, rotationOffset = 0) {
+    canvasCtx.beginPath();
     for(let i=0; i<8; i++) {
         const a = (i * Math.PI / 4) + rotationOffset; const px = x + r * Math.cos(a); const py = y + r * Math.sin(a);
-        if(i===0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        if(i===0) canvasCtx.moveTo(px, py); else canvasCtx.lineTo(px, py);
     }
-    ctx.closePath(); ctx.stroke();
+    canvasCtx.closePath(); canvasCtx.stroke();
 }
 
 function spawnTarget() {
@@ -489,9 +492,14 @@ function executeHit(targetData, shooterIdentity, baseDamage) {
     }
 }
 
+function resize() { 
+    if(canvas) { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+} 
+window.addEventListener('resize', resize);
+
 function drawCrosshair(normX, normY, color, wIdx = 0, currentCooldown = 1) {
     const px = normX * canvas.width, py = normY * canvas.height; ctx.strokeStyle = color; ctx.lineWidth = 2;
-    const recoil = (1 - currentCooldown) * 15; 
+    const recoil = Math.max(0, (1 - currentCooldown) * 15); 
     
     if (wIdx === 0) { 
         ctx.beginPath(); ctx.moveTo(px - 14 - recoil, py); ctx.lineTo(px + 14 + recoil, py); ctx.stroke(); 
@@ -512,115 +520,126 @@ function drawCrosshair(normX, normY, color, wIdx = 0, currentCooldown = 1) {
 
 function renderLoop(now) {
     if (!isGameRunning && timeScale === 1.0) return; 
-    let dt = ((now - lastTime) / 1000) * timeScale; if (dt > 0.05) dt = 0.05; lastTime = now; const nowInSeconds = now / 1000;
     
-    dtHistory.push(dt); if(dtHistory.length > 20) dtHistory.shift();
-    let avgDt = dtHistory.reduce((a,b)=>a+b, 0) / dtHistory.length;
-    globalParticleThrottle = (avgDt > 0.018 && isTouchDevice) ? 0.3 : 1.0;
-    
-    if (nowInSeconds - myLastHitTime > 3 && myCombo > 1) { myCombo = 1; document.getElementById('myCombo').innerText = 'x1'; peripheralFlashOpacity = 0.8; }
-    if (nowInSeconds - peerLastHitTime > 3 && peerCombo > 1) { peerCombo = 1; document.getElementById('peerCombo').innerText = 'x1'; }
-    
-    const activeWeapon = WEAPONS[currentWeaponIdx];
-    const cdProgress = Math.min(1, (nowInSeconds - lastShotTime) / activeWeapon.rof);
-    
-    const weaponFill = document.getElementById('weaponFill');
-    if (weaponFill) weaponFill.style.width = (100 - (cdProgress * 100)) + '%';
-
-    const reconnectOverlay = document.getElementById('reconnectOverlay');
-    if (gameMode !== 'SOLO' && connection && connection.open) {
-        if (performance.now() - pingStart > 3500) { if (reconnectOverlay) reconnectOverlay.style.display = 'flex'; } 
-        else { if (reconnectOverlay) reconnectOverlay.style.display = 'none'; }
-    }
-
-    if (isTouchDevice && !isJammed && !isMatchOver && autoFireEnabled && activeWeapon.auto) {
-        let hovering = false;
-        for (let i = 0; i < targets.length; i++) {
-            if (!targets[i].active) continue;
-            const dist = Math.hypot(myAim.x - targets[i].x, myAim.y - targets[i].y);
-            if (dist <= targets[i].r * 1.2) { hovering = true; break; }
-        }
-        if (hovering) { autoFireHoverTime += dt * 1000; if (autoFireHoverTime >= 60) isTriggerDown = true; } else { autoFireHoverTime = 0; if (!shootPointerId) isTriggerDown = false; }
-    }
-    
-    if (joystick.active && !isJammed && !isMatchOver) {
-        const speedMult = 1.2; 
-        myAim.x = Math.max(0, Math.min(1, myAim.x + (joystick.deltaX / joystick.radius) * speedMult * dt));
-        myAim.y = Math.max(0, Math.min(1, myAim.y + (joystick.deltaY / joystick.radius) * speedMult * dt));
-    }
-    
-    if (isTriggerDown) attemptFire(nowInSeconds);
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    if (shakeEnabled) {
-        screenShake *= Math.exp(-10 * dt); ctx.save(); if (screenShake > 0.5) ctx.translate((Math.random() * 2 - 1) * screenShake, (Math.random() * 2 - 1) * screenShake);
-    } else { ctx.save(); }
-
-    let threatNearTop = false;
-
-    targets.forEach(t => {
-        if (!t.active) return; t.life -= dt; if (t.life <= 0) { t.active = false; return; }
-        t.x += t.vx * dt; t.y += t.vy * dt;
-        if (t.x - t.r <= 0) { t.x = t.r; t.vx *= -1; } if (t.x + t.r >= 1) { t.x = 1 - t.r; t.vx *= -1; }
-        if (t.y - t.r <= 0.1) { t.y = 0.1 + t.r; t.vy *= -1; } if (t.y + t.r >= 1) { t.y = 1 - t.r; t.vy *= -1; }
-        const px = t.x * canvas.width, py = t.y * canvas.height, radiusPx = t.r * Math.min(canvas.width, canvas.height), opacity = Math.min(1, t.life); 
+    // FIX: Massive Try/Finally block guarantees the canvas grid is reset every frame, stopping it from sliding offscreen.
+    try {
+        let dt = ((now - lastTime) / 1000) * timeScale; if (dt > 0.05) dt = 0.05; lastTime = now; const nowInSeconds = now / 1000;
         
-        if (t.y < 0.25) threatNearTop = true;
+        dtHistory.push(dt); if(dtHistory.length > 20) dtHistory.shift();
+        let avgDt = dtHistory.reduce((a,b)=>a+b, 0) / dtHistory.length;
+        globalParticleThrottle = (avgDt > 0.018 && isTouchDevice) ? 0.3 : 1.0;
+        
+        if (nowInSeconds - myLastHitTime > 3 && myCombo > 1) { myCombo = 1; document.getElementById('myCombo').innerText = 'x1'; peripheralFlashOpacity = 0.8; }
+        if (nowInSeconds - peerLastHitTime > 3 && peerCombo > 1) { peerCombo = 1; document.getElementById('peerCombo').innerText = 'x1'; }
+        
+        const activeWeapon = WEAPONS[currentWeaponIdx];
+        const cdProgress = Math.max(0, Math.min(1, (nowInSeconds - lastShotTime) / activeWeapon.rof));
+        
+        const weaponFill = document.getElementById('weaponFill');
+        if (weaponFill) weaponFill.style.width = (100 - (cdProgress * 100)) + '%';
 
-        ctx.strokeStyle = `rgba(${t.rgb}, ${opacity})`; ctx.lineWidth = 3; ctx.fillStyle = `rgba(${t.rgb}, ${opacity * 0.15})`;
-        drawOctagon(ctx, px, py, radiusPx, (timeScale === 0.05 ? 0 : performance.now() / 1000)); ctx.fill();
-        ctx.beginPath(); ctx.arc(px, py, radiusPx + 10, performance.now()/500, Math.PI + performance.now()/500); ctx.stroke();
-
-        if (!isMatchOver) {
-            const dx = t.x - myAim.x; const dy = t.y - myAim.y; const dist = Math.hypot(dx, dy);
-            if (dist > 0.25) {
-                const angle = Math.atan2(dy, dx);
-                const ix = myAim.x * canvas.width + Math.cos(angle) * 45; const iy = myAim.y * canvas.height + Math.sin(angle) * 45;
-                ctx.save(); ctx.translate(ix, iy); ctx.rotate(angle);
-                ctx.strokeStyle = `rgba(${t.rgb}, ${opacity * 0.8})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(6, 0); ctx.lineTo(-6, 6); ctx.stroke(); ctx.restore();
-            }
+        const reconnectOverlay = document.getElementById('reconnectOverlay');
+        if (gameMode !== 'SOLO' && connection && connection.open) {
+            if (performance.now() - pingStart > 3500) { if (reconnectOverlay) reconnectOverlay.style.display = 'flex'; } 
+            else { if (reconnectOverlay) reconnectOverlay.style.display = 'none'; }
         }
-    });
 
-    const timerEl = document.getElementById('timerDisplay'); const scoreEl = document.getElementById('scoreHudContainer');
-    if (threatNearTop) { timerEl.classList.add('threat-shade'); scoreEl.classList.add('threat-shade'); } else { timerEl.classList.remove('threat-shade'); scoreEl.classList.remove('threat-shade'); }
+        if (isTouchDevice && !isJammed && !isMatchOver && autoFireEnabled && activeWeapon.auto) {
+            let hovering = false;
+            for (let i = 0; i < targets.length; i++) {
+                if (!targets[i].active) continue;
+                const dist = Math.hypot(myAim.x - targets[i].x, myAim.y - targets[i].y);
+                if (dist <= targets[i].r * 1.2) { hovering = true; break; }
+            }
+            if (hovering) { autoFireHoverTime += dt * 1000; if (autoFireHoverTime >= 60) isTriggerDown = true; } else { autoFireHoverTime = 0; if (!shootPointerId) isTriggerDown = false; }
+        }
+        
+        if (joystick.active && !isJammed && !isMatchOver) {
+            const speedMult = 1.2; 
+            myAim.x = Math.max(0, Math.min(1, myAim.x + (joystick.deltaX / joystick.radius) * speedMult * dt));
+            myAim.y = Math.max(0, Math.min(1, myAim.y + (joystick.deltaY / joystick.radius) * speedMult * dt));
+        }
+        
+        if (isTriggerDown) attemptFire(nowInSeconds);
 
-    if (peripheralFlashOpacity > 0 && !isMatchOver) {
-        peripheralFlashOpacity -= dt * 2;
-        document.getElementById('damageFlash').style.opacity = Math.max(0, peripheralFlashOpacity);
-    }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.save();
+        if (shakeEnabled) {
+            screenShake *= Math.exp(-10 * dt); if (screenShake > 0.5) ctx.translate((Math.random() * 2 - 1) * screenShake, (Math.random() * 2 - 1) * screenShake);
+        }
 
-    for (let i = shards.length - 1; i >= 0; i--) { const s = shards[i]; s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; ctx.fillStyle = s.color; ctx.globalAlpha = Math.max(0, s.life); ctx.fillRect(s.x * canvas.width, s.y * canvas.height, 4, 4); ctx.globalAlpha = 1.0; if (s.life <= 0) shards.splice(i, 1); }
-    for (let i = fct.length - 1; i >= 0; i--) { const f = fct[i]; f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 0.2 * dt; f.life -= dt; ctx.fillStyle = `rgba(255,255,255,${Math.max(0, f.life)})`; ctx.font = 'bold 22px monospace'; ctx.fillText(f.text, f.x * canvas.width, f.y * canvas.height); if (f.life <= 0) fct.splice(i, 1); }
-    for (let i = shockwaves.length - 1; i >= 0; i--) { const s = shockwaves[i]; s.life -= dt * 2; const r = (1 - s.life) * s.maxR * canvas.width; ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, s.life)})`; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(s.x * canvas.width, s.y * canvas.height, r, 0, Math.PI*2); ctx.stroke(); if (s.life <= 0) shockwaves.splice(i, 1); }
-    for (let i = flashes.length - 1; i >= 0; i--) { const f = flashes[i]; f.age += dt * 20; ctx.strokeStyle = f.color; ctx.globalAlpha = Math.max(0, 1 - f.age); ctx.lineWidth = 4; if(f.poly) drawOctagon(ctx, f.x * canvas.width, f.y * canvas.height, 25 * f.age); else { ctx.beginPath(); ctx.arc(f.x * canvas.width, f.y * canvas.height, 25 * f.age, 0, Math.PI * 2); ctx.stroke(); } ctx.globalAlpha = 1.0; if (f.age > 1) flashes.splice(i, 1); }
-    for (let i = hitMarkers.length - 1; i >= 0; i--) { const hm = hitMarkers[i]; hm.age += dt * 4; const size = 10, px = hm.x * canvas.width, py = hm.y * canvas.height; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.globalAlpha = Math.max(0, 1 - hm.age); ctx.beginPath(); ctx.moveTo(px - size, py - size); ctx.lineTo(px + size, py + size); ctx.moveTo(px + size, py - size); ctx.lineTo(px - size, py + size); ctx.stroke(); ctx.globalAlpha = 1.0; if (hm.age > 1) hitMarkers.splice(i, 1); }
-    
-    if (joystick.active) { joystickAlpha = Math.min(0.8, joystickAlpha + dt * 5); } 
-    else { joystickAlpha = Math.max(0.1, joystickAlpha - dt * 2); }
+        let threatNearTop = false;
 
-    if (joystickAlpha > 0.11 || joystick.active) { 
-        ctx.beginPath(); ctx.strokeStyle = `rgba(34, 224, 255, ${joystickAlpha * 0.5})`; ctx.lineWidth = 2; 
-        ctx.arc(joystick.originX, joystick.originY, joystick.radius, 0, Math.PI * 2); ctx.stroke(); 
-        ctx.beginPath(); ctx.fillStyle = `rgba(34, 224, 255, ${joystickAlpha})`; 
-        ctx.arc(joystick.originX + joystick.deltaX, joystick.originY + joystick.deltaY, 15, 0, Math.PI * 2); ctx.fill(); 
-    }
-    
-    if (gameMode === 'DUEL') drawCrosshair(peerAim.x, peerAim.y, '#ff2d95');
-    if (gameMode === 'SQUAD') {
-        Object.values(squadAims).forEach(aim => {
-            const color = (aim.team === 'blue') ? '#22e0ff' : '#ff2d95';
-            drawCrosshair(aim.x, aim.y, color);
+        targets.forEach(t => {
+            if (!t.active) return; t.life -= dt; if (t.life <= 0) { t.active = false; return; }
+            t.x += t.vx * dt; t.y += t.vy * dt;
+            if (t.x - t.r <= 0) { t.x = t.r; t.vx *= -1; } if (t.x + t.r >= 1) { t.x = 1 - t.r; t.vx *= -1; }
+            if (t.y - t.r <= 0.1) { t.y = 0.1 + t.r; t.vy *= -1; } if (t.y + t.r >= 1) { t.y = 1 - t.r; t.vy *= -1; }
+            const px = t.x * canvas.width, py = t.y * canvas.height, radiusPx = t.r * Math.min(canvas.width, canvas.height), opacity = Math.min(1, t.life); 
+            
+            if (t.y < 0.25) threatNearTop = true;
+
+            ctx.strokeStyle = `rgba(${t.rgb}, ${opacity})`; ctx.lineWidth = 3; ctx.fillStyle = `rgba(${t.rgb}, ${opacity * 0.15})`;
+            drawOctagon(ctx, px, py, radiusPx, (timeScale === 0.05 ? 0 : performance.now() / 1000)); ctx.fill();
+            ctx.beginPath(); ctx.arc(px, py, radiusPx + 10, performance.now()/500, Math.PI + performance.now()/500); ctx.stroke();
+
+            if (!isMatchOver) {
+                const dx = t.x - myAim.x; const dy = t.y - myAim.y; const dist = Math.hypot(dx, dy);
+                if (dist > 0.25) {
+                    const angle = Math.atan2(dy, dx);
+                    const ix = myAim.x * canvas.width + Math.cos(angle) * 45; const iy = myAim.y * canvas.height + Math.sin(angle) * 45;
+                    ctx.save(); ctx.translate(ix, iy); ctx.rotate(angle);
+                    ctx.strokeStyle = `rgba(${t.rgb}, ${opacity * 0.8})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, -6); ctx.lineTo(6, 0); ctx.lineTo(-6, 6); ctx.stroke(); ctx.restore();
+                }
+            }
         });
+
+        const timerEl = document.getElementById('timerDisplay'); const scoreEl = document.getElementById('scoreHudContainer');
+        if (threatNearTop) { timerEl.classList.add('threat-shade'); scoreEl.classList.add('threat-shade'); } else { timerEl.classList.remove('threat-shade'); scoreEl.classList.remove('threat-shade'); }
+
+        if (peripheralFlashOpacity > 0 && !isMatchOver) {
+            peripheralFlashOpacity -= dt * 2;
+            document.getElementById('damageFlash').style.opacity = Math.max(0, peripheralFlashOpacity);
+        }
+
+        for (let i = shards.length - 1; i >= 0; i--) { const s = shards[i]; s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt; ctx.fillStyle = s.color; ctx.globalAlpha = Math.max(0, s.life); ctx.fillRect(s.x * canvas.width, s.y * canvas.height, 4, 4); ctx.globalAlpha = 1.0; if (s.life <= 0) shards.splice(i, 1); }
+        for (let i = fct.length - 1; i >= 0; i--) { const f = fct[i]; f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 0.2 * dt; f.life -= dt; ctx.fillStyle = `rgba(255,255,255,${Math.max(0, f.life)})`; ctx.font = 'bold 22px monospace'; ctx.fillText(f.text, f.x * canvas.width, f.y * canvas.height); if (f.life <= 0) fct.splice(i, 1); }
+        for (let i = shockwaves.length - 1; i >= 0; i--) { const s = shockwaves[i]; s.life -= dt * 2; const r = (1 - s.life) * s.maxR * canvas.width; ctx.strokeStyle = `rgba(255,255,255,${Math.max(0, s.life)})`; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(s.x * canvas.width, s.y * canvas.height, r, 0, Math.PI*2); ctx.stroke(); if (s.life <= 0) shockwaves.splice(i, 1); }
+        for (let i = flashes.length - 1; i >= 0; i--) { const f = flashes[i]; f.age += dt * 20; ctx.strokeStyle = f.color; ctx.globalAlpha = Math.max(0, 1 - f.age); ctx.lineWidth = 4; if(f.poly) drawOctagon(ctx, f.x * canvas.width, f.y * canvas.height, 25 * f.age); else { ctx.beginPath(); ctx.arc(f.x * canvas.width, f.y * canvas.height, 25 * f.age, 0, Math.PI * 2); ctx.stroke(); } ctx.globalAlpha = 1.0; if (f.age > 1) flashes.splice(i, 1); }
+        for (let i = hitMarkers.length - 1; i >= 0; i--) { const hm = hitMarkers[i]; hm.age += dt * 4; const size = 10, px = hm.x * canvas.width, py = hm.y * canvas.height; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.globalAlpha = Math.max(0, 1 - hm.age); ctx.beginPath(); ctx.moveTo(px - size, py - size); ctx.lineTo(px + size, py + size); ctx.moveTo(px + size, py - size); ctx.lineTo(px - size, py + size); ctx.stroke(); ctx.globalAlpha = 1.0; if (hm.age > 1) hitMarkers.splice(i, 1); }
+        
+        if (joystick.active) { joystickAlpha = Math.min(0.8, joystickAlpha + dt * 5); } 
+        else { joystickAlpha = Math.max(0.1, joystickAlpha - dt * 2); }
+
+        if (joystickAlpha > 0.11 || joystick.active) { 
+            ctx.beginPath(); ctx.strokeStyle = `rgba(34, 224, 255, ${joystickAlpha * 0.5})`; ctx.lineWidth = 2; 
+            ctx.arc(joystick.originX, joystick.originY, joystick.radius, 0, Math.PI * 2); ctx.stroke(); 
+            ctx.beginPath(); ctx.fillStyle = `rgba(34, 224, 255, ${joystickAlpha})`; 
+            ctx.arc(joystick.originX + joystick.deltaX, joystick.originY + joystick.deltaY, 15, 0, Math.PI * 2); ctx.fill(); 
+        }
+        
+        if (gameMode === 'DUEL') drawCrosshair(peerAim.x, peerAim.y, '#ff2d95');
+        if (gameMode === 'SQUAD') {
+            Object.values(squadAims).forEach(aim => {
+                const color = (aim.team === 'blue') ? '#22e0ff' : '#ff2d95';
+                drawCrosshair(aim.x, aim.y, color);
+            });
+        }
+        
+        if (!isJammed && !isMatchOver) drawCrosshair(myAim.x, myAim.y, activeWeapon.color, currentWeaponIdx, cdProgress);
+        
+    } catch (e) {
+        console.error("CRITICAL ENGINE ERROR:", e);
+    } finally {
+        // ALWAYS reset the transformation matrix and alpha, even if a drawing error occurs.
+        ctx.restore(); 
+        ctx.globalAlpha = 1.0;
+        targets = targets.filter(t => t.active); 
+        requestAnimationFrame(renderLoop);
     }
-    
-    if (!isJammed && !isMatchOver) drawCrosshair(myAim.x, myAim.y, activeWeapon.color, currentWeaponIdx, cdProgress);
-    ctx.restore(); targets = targets.filter(t => t.active); requestAnimationFrame(renderLoop);
 }
 
-// FIX: Anti-Lag rendering setup. 
-// Downscales actual canvas drawing resolution by 50% while CSS stretches it smoothly to 100vw/100vh.
 const bgCanvas = document.getElementById('bgCanvas'); const bgCtx = bgCanvas.getContext('2d', { alpha: false });
 function resizeBg() { 
     bgCanvas.width = window.innerWidth / 2; 
