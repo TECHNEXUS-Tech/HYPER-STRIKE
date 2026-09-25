@@ -1,6 +1,8 @@
 // js/main.js - Global States, Audio, and Hub UI
 
-// --- GLOBAL ENGINE STATE ---
+const canvas = document.getElementById('gameCanvas'); 
+const ctx = canvas.getContext('2d');
+
 let myUsername = "Player"; 
 let gameMode = 'SOLO'; 
 let hostMatchTime = 60;
@@ -47,9 +49,6 @@ let globalParticleThrottle = 1.0, dtHistory = [];
 let bgZ = 1.0, streams = [], rgbHue = 0, notifyTimeout = null;
 let isTouchDevice = false;
 
-const canvas = document.getElementById('gameCanvas'); 
-const ctx = canvas.getContext('2d');
-
 function updatePingUI(ping) {
     const ind = document.getElementById('pingIndicator');
     const val = document.getElementById('pingValue');
@@ -66,7 +65,6 @@ function updatePingUI(ping) {
     }
 }
 
-// FIX: Completely bypassed the window.onload event trap. The engine now boots forcefully.
 setTimeout(() => {
     const splash = document.getElementById('splash');
     if (splash) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); }
@@ -75,7 +73,6 @@ setTimeout(() => {
 
 window.addEventListener('touchstart', () => { isTouchDevice = true; }, { passive: true });
 
-// --- SETTINGS GEAR MENU LOGIC ---
 const btnSettingsMenu = document.getElementById('btnSettingsMenu');
 const settingsDropdown = document.getElementById('settingsDropdown');
 
@@ -173,7 +170,6 @@ document.getElementById('btnOpenGuide').addEventListener('click', () => {
 });
 document.getElementById('btnCloseGuide').addEventListener('click', () => document.getElementById('guideModal').style.display = 'none');
 
-// --- LOGOUT LOGIC ---
 document.getElementById('btnLogout').addEventListener('click', () => {
     localStorage.removeItem('vfactor_username');
     sessionStorage.removeItem('vfactor_username');
