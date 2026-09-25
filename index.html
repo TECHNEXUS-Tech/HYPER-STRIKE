@@ -198,14 +198,13 @@
 
     <canvas id="gameCanvas"></canvas>
 
-    <!-- UI Physics scripts load first -->
+    <!-- FIX: Libraries load first, then game logic. All strictly ordered via 'defer'. -->
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js" defer></script>
+    <script src="https://unpkg.com/trystero/dist/trystero-torrent.min.js" defer></script>
+    
     <script src="js/main.js" defer></script>
     <script src="js/game.js" defer></script>
     <script src="js/network-peer.js" defer></script>
     <script src="js/network-trystero.js" defer></script>
-    
-    <!-- FIX: Network CDNs strictly deferred to async background loading -->
-    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js" async></script>
-    <script src="https://unpkg.com/trystero/dist/trystero-torrent.min.js" async></script>
 </body>
 </html>
