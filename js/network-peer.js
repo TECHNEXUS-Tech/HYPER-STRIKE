@@ -202,7 +202,6 @@ function setupChannel(conn) {
         
         else if (data.type === 'peer_left') { alert("The other player left the room."); if (typeof resetToHub === "function") resetToHub(); }
         
-        // FIX: The soft reset command safely pushes the receiving player back to the Match Room 
         else if (data.type === 'reset_lobby') { 
             if (typeof softResetToMatchLobby === "function") softResetToMatchLobby(); 
         }
