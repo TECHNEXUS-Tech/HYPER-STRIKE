@@ -169,7 +169,6 @@ function startGameplay(duration) {
         if (currentMatchTime <= 0) { clearInterval(clockInterval); endMatch(); }
     }, 1000);
     
-    // Explicitly guarantee canvas is reset before rendering begins
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     requestAnimationFrame((now) => { lastTime = now; renderLoop(now); });
 }
@@ -521,7 +520,6 @@ function drawCrosshair(normX, normY, color, wIdx = 0, currentCooldown = 1) {
 function renderLoop(now) {
     if (!isGameRunning && timeScale === 1.0) return; 
     
-    // FIX: Massive Try/Finally block guarantees the canvas grid is reset every frame, stopping it from sliding offscreen.
     try {
         let dt = ((now - lastTime) / 1000) * timeScale; if (dt > 0.05) dt = 0.05; lastTime = now; const nowInSeconds = now / 1000;
         
@@ -555,7 +553,7 @@ function renderLoop(now) {
         }
         
         if (joystick.active && !isJammed && !isMatchOver) {
-            const speedMult = 1.2; 
+            const speedMult = 0.5; // MOBILE SENSITIVITY FIX
             myAim.x = Math.max(0, Math.min(1, myAim.x + (joystick.deltaX / joystick.radius) * speedMult * dt));
             myAim.y = Math.max(0, Math.min(1, myAim.y + (joystick.deltaY / joystick.radius) * speedMult * dt));
         }
@@ -632,7 +630,6 @@ function renderLoop(now) {
     } catch (e) {
         console.error("CRITICAL ENGINE ERROR:", e);
     } finally {
-        // ALWAYS reset the transformation matrix and alpha, even if a drawing error occurs.
         ctx.restore(); 
         ctx.globalAlpha = 1.0;
         targets = targets.filter(t => t.active); 
