@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>V-FACTOR: Hyper-Strike</title>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Alex+Brush&family=Audiowide&family=Montserrat:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="bgCanvas"></canvas>
+
+    <div id="splash">
+        <h1 class="brand-font">V-FACTOR STUDIOS</h1>
+        <p class="cursive-accent">Built by Vinay</p>
+    </div>
+
+    <div id="versionWatermark" class="mono-stats">v1.0</div>
+
+    <div id="statusContainer" class="glass-panel mono-stats">Status: <span id="status">Offline</span></div>
+    
+    <div id="settingsContainer" style="display: none;">
+        <button id="btnSettingsMenu" class="glass-panel brand-font">⚙️ SETTINGS</button>
+        <div id="settingsDropdown" class="glass-panel">
+            <button id="btnGlobalSound" class="dropdown-btn brand-font">[ SOUND: ON ]</button>
+            <button id="btnOpenGuide" class="dropdown-btn brand-font">[ GUIDE ]</button>
+            <button id="btnShakeToggle" class="dropdown-btn brand-font">[ SHAKE: ON ]</button>
+            <button id="btnLogout" class="dropdown-btn brand-font" style="color: #ff3b3b;">[ LOGOUT ]</button>
+        </div>
+    </div>
+
+    <div id="guideModal">
+        <div class="guide-content glass-panel">
+            <h2 class="brand-font">V-FACTOR Guide</h2>
+            <h3>🎮 How to Play</h3>
+            <ul>
+                <li><strong>Desktop:</strong> Move your mouse to aim. Click to fire.</li>
+                <li><strong>Mobile Joystick:</strong> Drag anywhere on the left half of the screen to steer the crosshair. Tap the right half to fire.</li>
+                <li><strong>Auto-Fire (Mobile Only):</strong> Your weapon automatically shoots when the crosshair locks onto a target!</li>
+            </ul>
+            <h3>🔫 The Arsenal</h3>
+            <ul>
+                <li><strong>PULSE [SMG]:</strong> Hold to fire. High speed, low damage.</li>
+                <li><strong>RAIL [SNIPER]:</strong> Tap to fire. Massive damage, slow reload.</li>
+                <li><strong>AEGIS [SHOTGUN]:</strong> Devastating up close.</li>
+                <li><strong>FLUX [BURST]:</strong> 3-round burst. Balanced.</li>
+            </ul>
+            <h3>🛸 Anomalies (Targets)</h3>
+            <ul>
+                <li><span style="color: #8dff5a;">GREEN:</span> Standard target.</li>
+                <li><span style="color: #ffd54a;">GOLD:</span> Fast. Grants 3X score multiplier!</li>
+                <li><span style="color: #22e0ff;">CYAN (EMP):</span> Instantly jams opponent's screen!</li>
+            </ul>
+            <button id="btnCloseGuide" class="brand-font">[ UNDERSTOOD ]</button>
+        </div>
+    </div>
+
+    <div id="loginUI" class="flex-center-wrapper">
+        <div class="login-box glass-panel">
+            <h2 class="brand-font">Welcome Players</h2>
+            <p class="sec-note">Create an ID to save your progress and secure your username across sessions.</p>
+            <input type="text" id="regUsername" placeholder="Enter Username (e.g. CyberNinja)">
+            <input type="password" id="regPassword" placeholder="Set Password">
+            <button class="btn-login brand-font" id="btnLogin">[ LOGIN / CREATE ID ]</button>
+        </div>
+    </div>
+
+    <div id="skeletonUI">
+        <div class="skeleton skel-hud"></div>
+        <div class="skeleton skel-hud" style="float: right;"></div>
+    </div>
+
+    <div id="lobby" class="flex-center-wrapper" style="display: none;">
+        <div class="hub-content">
+            <h1 class="brand-font gradient-shimmer" style="margin-bottom: 5px; text-align: center; text-shadow: 0 0 10px #22e0ff; font-size: clamp(20px, 4.5vw, 28px);">V-FACTOR: SHOOTING HUB</h1>
+            <p style="text-align: center; margin-bottom: 15px; color: #8dff5a; font-weight: 600; font-size: 12px;">Logged in as: <strong id="hubUsernameDisplay" class="mono-stats"></strong></p>
+
+            <div class="mode-container" id="primaryModes">
+                <button id="btnPrimarySolo" class="mode-btn active glass-panel brand-font">[ SOLO MODE ]</button>
+                <button id="btnPrimaryMulti" class="mode-btn glass-panel brand-font">[ MULTIPLAYER ]</button>
+            </div>
+
+            <div class="mode-container-multi" id="subModes">
+                <button id="btnDuel" class="mode-btn active glass-panel brand-font">[ ARENA MODE ]</button>
+                <button id="btnSquad" class="mode-btn glass-panel brand-font">[ 2v2 SQUAD ]</button>
+            </div>
+
+            <div id="networkControls" style="display: none; transition: 0.3s opacity; width: 100%;">
+                <div class="network-grid">
+                    <div class="box glass-panel interactive-panel">
+                        <h3 class="brand-font">[ Host Game ]</h3>
+                        <div class="lobby-settings-row">
+                            <label>Duration (Secs):</label>
+                            <input type="number" id="matchTimeSetting" class="mono-stats" value="60" min="30" max="300">
+                        </div>
+                        <div class="lobby-settings-row">
+                            <label>Max Targets:</label>
+                            <input type="number" id="maxTargetSetting" class="mono-stats" value="8" min="4" max="20">
+                        </div>
+                        <div class="lobby-settings-row" style="margin-bottom: 15px;">
+                            <label>Allow EMPs:</label>
+                            <input type="checkbox" id="empSetting" checked class="custom-checkbox">
+                        </div>
+                        <div class="id-row">
+                            <span>ID: <strong id="playerId">Connecting...</strong></span>
+                            <button class="copy-btn brand-font" id="copyIdBtn">COPY</button>
+                        </div>
+                    </div>
+                    <div class="box glass-panel interactive-panel" style="border-color: rgba(255,45,149,0.4); background: rgba(255,45,149,0.05);">
+                        <h3 style="color: #ff2d95;" class="brand-font">[ Join Game ]</h3>
+                        <input type="text" id="joinId" class="mono-stats" placeholder="Paste Host ID here" style="border-color: rgba(255,45,149,0.4); margin-bottom: 15px; margin-top: 5px;">
+                        <button id="connectBtn" class="join-btn brand-font">[ CONNECT TO HOST ]</button>
+                    </div>
+                </div>
+            </div>
+
+            <button id="launchSoloBtn" class="brand-font launch-btn">[ CLICK TO PLAY ]</button>
+        </div>
+    </div>
+
+    <div id="matchLobby" class="flex-center-wrapper" style="display: none;">
+        <div class="hub-content" style="display: flex; flex-direction: column; align-items: center; max-width: 450px;">
+            <div class="match-box glass-panel interactive-panel" style="width: 100%;">
+                <h2 class="brand-font" id="roomTitle">MATCH ROOM</h2>
+                <div id="playerSlotsContainer">
+                    <div class="player-slot mono-stats slot-host" id="slot1">P1 (Blue): <strong id="roomHostName"></strong></div>
+                    <div class="player-slot mono-stats slot-peer" id="slot2">P2 (Red): <strong id="roomPeerName">Waiting...</strong></div>
+                    <div class="player-slot mono-stats slot-host" id="slot3" style="display: none;">P3 (Blue): <strong id="roomPeer3Name">Waiting...</strong></div>
+                    <div class="player-slot mono-stats slot-peer" id="slot4" style="display: none;">P4 (Red): <strong id="roomPeer4Name">Waiting...</strong></div>
+                </div>
+                <p id="roomMatchRules" class="mono-stats" style="color: #ffb020; font-size: 13px; margin-top: 15px; font-weight: bold; letter-spacing: 1px;"></p>
+                <button id="btnReady" class="btn-ready brand-font">[ HOLD TO READY ]</button>
+                <button id="btnStartMatch" class="btn-start brand-font">[ START MATCH ]</button>
+                <button id="btnTransferHost" class="btn-transfer brand-font" style="display: none;">[ Transfer Host ]</button>
+                <button id="btnLeaveRoom" class="btn-leave brand-font">[ LEAVE ROOM ]</button>
+            </div>
+            <div id="waitingText" class="brand-font">WAITING FOR HOST...</div>
+        </div>
+    </div>
+
+    <div id="countdownOverlay" class="brand-font">3</div>
+    <div id="reconnectOverlay" class="brand-font">RECONNECTING...</div>
+
+    <div id="gameUI">
+        <div id="damageFlash"></div>
+        <div id="inGameNotification" class="brand-font">PERFECT HIT</div>
+        <div id="timerDisplay" class="adaptive-hud brand-font">60</div>
+        
+        <div class="score-hud adaptive-hud" id="scoreHudContainer">
+            <div id="myHudSide"><span id="myNameDisplay">YOU</span>: <span id="myScore" class="mono-stats">0</span> <span id="myCombo" class="combo-text mono-stats">x1</span></div>
+            <div id="peerScoreBlock" style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+                <span id="peerNameDisplay">ENEMY</span>
+                <span id="pingIndicator" class="mono-stats" style="display: none; align-items: center; margin-right: 2px;">
+                    <svg viewBox="0 0 24 24" width="14" height="14" class="wifi-icon" id="wifiSvg">
+                        <path d="M12 21c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm-4.6-4.6c2.5-2.5 6.7-2.5 9.2 0l1.4-1.4c-3.3-3.3-8.7-3.3-12 0l1.4 1.4zm-4.2-4.2c4.9-4.9 12.8-4.9 17.7 0l1.4-1.4c-5.7-5.7-14.9-5.7-20.6 0l1.5 1.4zm-4.3-4.3c7.2-7.2 18.9-7.2 26.1 0l1.4-1.4c-8-8-20.9-8-28.9 0l1.4 1.4z"/>
+                    </svg>
+                    <span id="pingValue">--ms</span>
+                </span>
+                <span>: <span id="peerScore" class="mono-stats">0</span> <span id="peerCombo" class="combo-text mono-stats">x1</span></span>
+            </div>
+        </div>
+        
+        <button id="btnAutoFireToggle" class="brand-font" style="display: none;">[ AUTO: ON ]</button>
+        
+        <button id="weaponToggle" class="brand-font">
+            <div id="weaponFill"></div>
+            <span id="weaponText" style="position: relative; z-index: 2;">[ PULSE ]</span>
+        </button>
+    </div>
+    
+    <div id="jamOverlay" class="brand-font">SYSTEM JAMMED</div>
+
+    <div id="gameOverOverlay">
+        <div id="goTitle" class="brand-font">MATCH OVER</div>
+        
+        <div id="leaderboard-carousel" class="hud-container glass-panel interactive-panel">
+            <div id="slide-top3" class="carousel-slide">
+                <h3 class="brand-font" style="color: #ffb020; margin-bottom: 20px;">TOP 3 LEADERS</h3>
+                <ul id="top3-list" class="mono-stats"></ul>
+            </div>
+            <div id="slide-graph" class="carousel-slide active">
+                <h3 class="brand-font" style="color: #22e0ff; margin-bottom: 15px;">PERFORMANCE GRAPH</h3>
+                <div class="card-stats-grid mono-stats">
+                    <div class="stat-box"><span>ACCURACY</span><strong id="goMyAcc">0%</strong></div>
+                    <div class="stat-box"><span>MAX COMBO</span><strong id="goMyMaxCombo">x1</strong></div>
+                    <div class="stat-box"><span>HITS/SHOTS</span><strong id="goMyShots">0/0</strong></div>
+                </div>
+                <canvas id="performance-graph" width="320" height="140" class="graph-canvas"></canvas>
+            </div>
+            <button id="btnToggleCarousel" class="brand-font" style="margin-top: 20px; background: transparent; color: #ffb020; border: 1px solid #ffb020; padding: 10px; border-radius: 4px; display: none; cursor: pointer;">[ TOGGLE VIEW ]</button>
+        </div>
+        <button id="returnBtn" class="brand-font">[ RETURN TO LOBBY ]</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Physics scripts load first -->
+    <script src="js/main.js" defer></script>
+    <script src="js/game.js" defer></script>
+    <script src="js/network-peer.js" defer></script>
+    <script src="js/network-trystero.js" defer></script>
+    
+    <!-- FIX: Network CDNs strictly deferred to async background loading -->
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.2/dist/peerjs.min.js" async></script>
+    <script src="https://unpkg.com/trystero/dist/trystero-torrent.min.js" async></script>
+</body>
+</html>
