@@ -252,11 +252,9 @@ document.getElementById('btnDuel').addEventListener('click', () => {
     btnSquad.style.borderColor = "";
 }); 
 
-// FEATURE FLAG: 2v2 Squad Mode temporarily disabled for launch
 document.getElementById('btnSquad').addEventListener('click', () => {
     alert("Coming soon! Stay tuned!!!");
     
-    // Optional UI Feedback to show it was clicked but is locked
     const btnSquad = document.getElementById('btnSquad');
     btnSquad.innerText = "[ COMING SOON! ]";
     btnSquad.style.color = "#ffb020";
