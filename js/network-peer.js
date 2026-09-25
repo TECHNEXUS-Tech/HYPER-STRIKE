@@ -7,7 +7,6 @@ function generateLobbyID() {
 let peer = null;
 let isPeerInitialized = false;
 
-// FIX: Only initialize connection to Peer servers when user selects Multiplayer
 function initPeerJSNetwork() {
     if (isPeerInitialized) return;
     isPeerInitialized = true;
@@ -51,7 +50,6 @@ function initPeerJSNetwork() {
     }
 }
 
-// Hook Initialization to Multiplayer buttons to save background resources
 document.getElementById('btnPrimaryMulti').addEventListener('click', initPeerJSNetwork);
 document.getElementById('btnDuel').addEventListener('click', initPeerJSNetwork);
 
@@ -203,7 +201,12 @@ function setupChannel(conn) {
         } 
         
         else if (data.type === 'peer_left') { alert("The other player left the room."); if (typeof resetToHub === "function") resetToHub(); }
-        else if (data.type === 'reset_lobby') { if (typeof resetToHub === "function") resetToHub(); enterMatchLobby(); }
+        
+        // FIX: The soft reset command safely pushes the receiving player back to the Match Room 
+        else if (data.type === 'reset_lobby') { 
+            if (typeof softResetToMatchLobby === "function") softResetToMatchLobby(); 
+        }
+        
         else if (data.type === 'aim') { peerAim.x = data.x; peerAim.y = data.y; } 
         else if (data.type === 'spawn') { targets.push(data.target); } 
         
