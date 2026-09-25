@@ -62,18 +62,15 @@ function calculateMaxTargets() {
     return maxTargetsLimit + ((totalPlayers - 2) * 4);
 }
 
-// FULL RESET (Kills connection, returns to main Hub)
 function resetToHub() {
     if (connectionTimeout) clearTimeout(connectionTimeout);
     if (heartbeatInterval) clearInterval(heartbeatInterval);
     
-    document.body.classList.remove('urgency-pulse');
     const timerEl = document.getElementById('timerDisplay');
     if (timerEl) timerEl.classList.remove('timer-hurry');
     if (document.getElementById('reconnectOverlay')) document.getElementById('reconnectOverlay').style.display = 'none';
     if (document.getElementById('btnAutoFireToggle')) document.getElementById('btnAutoFireToggle').style.display = 'none';
     
-    // FIX: Restore opacity so the Network Controls don't become invisible
     const netControls = document.getElementById('networkControls');
     if(netControls) netControls.style.opacity = '1';
     
@@ -128,11 +125,9 @@ function resetToHub() {
     }
 }
 
-// SOFT RESET (Keeps connection alive, returns to Match Room)
 window.softResetToMatchLobby = function() {
     isMatchOver = false; isGameRunning = false; timeScale = 1.0; gyroBase.beta = null; 
     document.getElementById('damageFlash').style.display = 'none';
-    document.body.classList.remove('urgency-pulse');
     const timerEl = document.getElementById('timerDisplay');
     if (timerEl) timerEl.classList.remove('timer-hurry');
     if (document.getElementById('reconnectOverlay')) document.getElementById('reconnectOverlay').style.display = 'none';
@@ -172,7 +167,6 @@ function runCountdown(duration) {
     document.getElementById('settingsContainer').style.display = 'none';
     
     const cdOverlay = document.getElementById('countdownOverlay'); cdOverlay.style.display = 'flex';
-    document.body.classList.remove('urgency-pulse');
     
     myAccHistory = [0]; peerAccHistory = [0]; gyroBase = { beta: null, gamma: null }; peripheralFlashOpacity = 0; document.getElementById('damageFlash').style.display = 'block';
     
@@ -301,7 +295,6 @@ function endMatch() {
     if (spawnInterval) clearInterval(spawnInterval);
     
     releaseWakeLock();
-    document.body.classList.remove('urgency-pulse');
     if (document.getElementById('btnAutoFireToggle')) document.getElementById('btnAutoFireToggle').style.display = 'none';
     if (document.getElementById('reconnectOverlay')) document.getElementById('reconnectOverlay').style.display = 'none';
     
@@ -353,7 +346,6 @@ function endMatch() {
     title.style.display = 'block'; returnBtn.style.display = 'block';
 }
 
-// FIX: Return to Lobby now maps to the soft reset, keeping your match connection alive for a rematch.
 document.getElementById('returnBtn').addEventListener('click', () => {
     if (gameMode === 'SOLO') { 
         resetToHub(); 
@@ -618,9 +610,9 @@ function renderLoop(now) {
         }
         
         if (joystick.active && !isJammed && !isMatchOver) {
-            const speedMult = 0.8;
-            myAim.x = Math.max(0, Math.min(1, myAim.x + (joystick.deltaX / joystick.radius) * speedMult * dt));
-            myAim.y = Math.max(0, Math.min(1, myAim.y + (joystick.deltaY / joystick.radius) * speedMult * dt));
+            // FIXED: Speed multiplier is now dynamically powered by the player's custom sensitivity slider
+            myAim.x = Math.max(0, Math.min(1, myAim.x + (joystick.deltaX / joystick.radius) * joystickSensitivity * dt));
+            myAim.y = Math.max(0, Math.min(1, myAim.y + (joystick.deltaY / joystick.radius) * joystickSensitivity * dt));
         }
         
         if (isTriggerDown) attemptFire(nowInSeconds);
