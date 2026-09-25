@@ -8,6 +8,7 @@ let gameMode = 'SOLO';
 let hostMatchTime = 60;
 let maxTargetsLimit = 8;
 let allowEMPs = true;
+let joystickSensitivity = 1.0; // Dynamic Joystick Setting
 
 const WEAPONS = [ 
     { id: '[ PULSE ]', name: '[ PULSE ]', auto: true, rof: 0.1, spread: 0.05, pellets: 1, damage: 10, color: '#22e0ff' }, 
@@ -73,8 +74,12 @@ setTimeout(() => {
 
 window.addEventListener('touchstart', () => { isTouchDevice = true; }, { passive: true });
 
+// --- SETTINGS GEAR MENU LOGIC ---
 const btnSettingsMenu = document.getElementById('btnSettingsMenu');
 const settingsDropdown = document.getElementById('settingsDropdown');
+const sensSlider = document.getElementById('sensSlider');
+const sensValue = document.getElementById('sensValue');
+const btnDefaultSettings = document.getElementById('btnDefaultSettings');
 
 btnSettingsMenu.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -86,6 +91,32 @@ document.addEventListener('click', (e) => {
         settingsDropdown.style.display = 'none';
     }
 });
+
+if (sensSlider) {
+    sensSlider.addEventListener('input', (e) => {
+        joystickSensitivity = parseFloat(e.target.value);
+        sensValue.innerText = joystickSensitivity.toFixed(1);
+    });
+}
+
+if (btnDefaultSettings) {
+    btnDefaultSettings.addEventListener('click', () => {
+        // Reset Sensitivity
+        joystickSensitivity = 1.0;
+        if(sensSlider) sensSlider.value = "1.0";
+        if(sensValue) sensValue.innerText = "1.0";
+        
+        // Target buttons & actively trigger clicks to reset UI colors & logic if they are OFF
+        const btnSnd = document.getElementById('btnGlobalSound');
+        if (btnSnd && btnSnd.innerText.includes('OFF')) btnSnd.click();
+        
+        const btnShk = document.getElementById('btnShakeToggle');
+        if (btnShk && btnShk.innerText.includes('OFF')) btnShk.click();
+        
+        const btnAuto = document.getElementById('btnAutoFireToggle');
+        if (btnAuto && btnAuto.innerText.includes('OFF')) btnAuto.click();
+    });
+}
 
 const audio = (() => {
     let ac = null, master = null, muted = false, analyser = null, dataArray = null;
@@ -223,7 +254,6 @@ function enterHub() {
     if (gameMode === 'DUEL' || gameMode === 'SQUAD') document.getElementById('statusContainer').style.display = 'block'; 
 }
 
-// FIX: Added 'opacity = 1' guarantees to all menu switches so the controls never permanently disappear.
 document.getElementById('btnPrimarySolo').addEventListener('click', (e) => {
     gameMode = 'SOLO'; e.target.classList.add('active'); document.getElementById('btnPrimaryMulti').classList.remove('active');
     document.getElementById('subModes').style.display = 'none'; document.getElementById('networkControls').style.display = 'none'; document.getElementById('statusContainer').style.display = 'none'; document.getElementById('launchSoloBtn').style.display = 'block';
