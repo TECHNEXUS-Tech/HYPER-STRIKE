@@ -232,17 +232,43 @@ document.getElementById('btnPrimaryMulti').addEventListener('click', (e) => {
     document.getElementById('subModes').style.display = 'grid'; document.getElementById('launchSoloBtn').style.display = 'none'; 
     if(peerUsername === "Waiting...") document.getElementById('networkControls').style.display = 'block'; 
     document.getElementById('statusContainer').style.display = 'block';
-    document.getElementById('btnDuel').classList.add('active'); document.getElementById('btnSquad').classList.remove('active');
+    document.getElementById('btnDuel').classList.add('active'); 
+    
+    const btnSquad = document.getElementById('btnSquad');
+    btnSquad.classList.remove('active');
+    btnSquad.innerText = "[ 2v2 SQUAD ]";
+    btnSquad.style.color = "";
+    btnSquad.style.borderColor = "";
 });
 document.getElementById('btnDuel').addEventListener('click', () => {
-    gameMode = 'DUEL'; document.getElementById('btnDuel').classList.add('active'); document.getElementById('btnSquad').classList.remove('active');
+    gameMode = 'DUEL'; document.getElementById('btnDuel').classList.add('active'); 
     if(peerUsername === "Waiting...") document.getElementById('networkControls').style.display = 'block'; 
     document.getElementById('statusContainer').style.display = 'block';
+    
+    const btnSquad = document.getElementById('btnSquad');
+    btnSquad.classList.remove('active');
+    btnSquad.innerText = "[ 2v2 SQUAD ]";
+    btnSquad.style.color = "";
+    btnSquad.style.borderColor = "";
 }); 
+
+// FEATURE FLAG: 2v2 Squad Mode temporarily disabled for launch
 document.getElementById('btnSquad').addEventListener('click', () => {
-    gameMode = 'SQUAD'; document.getElementById('btnSquad').classList.add('active'); document.getElementById('btnDuel').classList.remove('active');
-    document.getElementById('networkControls').style.display = 'block'; 
-    document.getElementById('statusContainer').style.display = 'block';
+    alert("Coming soon! Stay tuned!!!");
+    
+    // Optional UI Feedback to show it was clicked but is locked
+    const btnSquad = document.getElementById('btnSquad');
+    btnSquad.innerText = "[ COMING SOON! ]";
+    btnSquad.style.color = "#ffb020";
+    btnSquad.style.borderColor = "#ffb020";
+    
+    setTimeout(() => {
+        if (gameMode !== 'SQUAD') {
+            btnSquad.innerText = "[ 2v2 SQUAD ]";
+            btnSquad.style.color = "";
+            btnSquad.style.borderColor = "";
+        }
+    }, 2000);
 });
 
 document.getElementById('matchTimeSetting').addEventListener('change', (e) => {
